@@ -1,0 +1,1583 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>Wallet-Werkbank</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/forge/1.3.1/forge.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#f4f5f7; --panel:#ffffff; --panel2:#f8fafc; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+  --accent:#2563eb; --accent-ink:#ffffff; --ok:#15803d; --warn:#b45309; --bad:#b91c1c; --chip:#eef2ff;
+  --shadow:0 1px 2px rgba(15,23,42,.06),0 4px 16px rgba(15,23,42,.06); --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0b1120; --panel:#111827; --panel2:#0f172a; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2937;
+    --accent:#60a5fa; --accent-ink:#0b1120; --chip:#1e293b; --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1120; --panel:#111827; --panel2:#0f172a; --ink:#e5e7eb; --muted:#94a3b8; --line:#1f2937;
+  --accent:#60a5fa; --accent-ink:#0b1120; --chip:#1e293b; --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+a{color:var(--accent)}
+header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px 0;overflow:hidden}
+.top{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.brand svg{flex:none}
+.status{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.dot.on{background:var(--ok)}
+nav{display:flex;gap:4px;overflow-x:auto;margin:8px 0 0;padding:0;scrollbar-width:none;max-width:100%}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none;border:0;background:none;color:var(--muted);padding:9px 10px 11px;font:inherit;font-weight:600;border-bottom:2px solid transparent;cursor:pointer}
+nav button.active{color:var(--ink);border-bottom-color:var(--accent)}
+nav .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--chip);font-size:11px;line-height:18px;text-align:center}
+main{max-width:1180px;margin:0 auto;padding:16px}
+section.tab{display:none}
+section.tab.active{display:block}
+.grid{display:grid;gap:16px}
+@media (min-width:900px){.g2{grid-template-columns:1fr 1fr}.g-edit{grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr)}.g3{grid-template-columns:repeat(3,1fr)}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);min-width:0}
+.panel h2{margin:0 0 4px;font-size:17px}
+.panel h3{margin:14px 0 6px;font-size:14px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:10px 0 4px}
+input,select,textarea{width:100%;font:inherit;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 10px;min-width:0}
+textarea{min-height:110px;resize:vertical}
+input[type=color]{padding:2px;height:38px}
+input[type=checkbox]{width:auto}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > *{min-width:0}
+.cols2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
+.cols3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+button.b{border:1px solid var(--line);background:var(--panel2);color:var(--ink);font:inherit;font-weight:600;border-radius:10px;padding:8px 12px;cursor:pointer;max-width:100%;text-align:center}
+button.b:hover{border-color:var(--accent)}
+button.p{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.s{padding:5px 9px;font-size:13px}
+button.ok{color:var(--ok)} button.bad{color:var(--bad)}
+button:disabled{opacity:.5;cursor:default}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--chip);border-radius:999px;padding:2px 9px;font-size:12px;margin:2px 4px 2px 0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.item .meta{flex:1;min-width:0}
+.item .t{font-weight:600;word-break:break-word}
+.item .d{font-size:12px;color:var(--muted);word-break:break-word}
+.kind{flex:none;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 6px;border-radius:6px;background:var(--chip);color:var(--muted)}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.over{border-color:var(--accent);color:var(--accent)}
+.empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99;max-width:92vw;box-shadow:0 8px 30px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.busy{display:none;align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.busy.on{display:flex}
+.spin{width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.score{font-variant-numeric:tabular-nums;font-weight:700}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.prop{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}
+@media (max-width:640px){.prop{grid-template-columns:1fr}}
+.conn{padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+.conn .t{font-weight:700}
+.md h1,.md h2,.md h3{font-size:15px;margin:12px 0 4px}
+.md p{margin:6px 0}.md ul{margin:6px 0;padding-left:20px}
+table.cat{width:100%;border-collapse:collapse;font-size:13px}
+table.cat th,table.cat td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+table.cat th{color:var(--muted);font-weight:600;font-size:12px}
+.tag-ok{color:var(--ok);font-weight:600}.tag-warn{color:var(--warn);font-weight:600}.tag-bad{color:var(--bad);font-weight:600}
+.fieldrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr) auto;gap:6px;margin-bottom:6px}
+.sec{border-top:1px solid var(--line);margin-top:12px;padding-top:4px}
+details summary{cursor:pointer;font-weight:600;margin:10px 0 4px}
+.cardlist{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.cardtile{cursor:pointer;border-radius:16px;outline:2px solid transparent;outline-offset:3px}
+.cardtile.sel{outline-color:var(--accent)}
+.notice{padding:10px 12px;border-radius:10px;background:var(--chip);font-size:13px;margin:8px 0}
+.notice.warn{border-left:3px solid var(--warn)}
+/* Wallet-Karte */
+.pass{--pbg:#1f4e79;--pfg:#fff;--plabel:#cbd5e1;background:var(--pbg);color:var(--pfg);border-radius:14px;padding:12px 14px 14px;box-shadow:0 6px 20px rgba(0,0,0,.18);position:relative;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;overflow:hidden;max-width:340px;margin:0 auto}
+.pass .lbl{color:var(--plabel);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass .val{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass .head{display:flex;justify-content:space-between;align-items:center;gap:10px;min-height:30px}
+.pass .logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;min-width:0}
+.pass .logo i{flex:none;width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:13px}
+.pass .logo span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass .hf{text-align:right;min-width:0}
+.pass .prim{margin:14px 0 10px;display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+.pass .prim .val{font-size:26px;font-weight:300;line-height:1.1;white-space:normal;word-break:break-word}
+.pass .prim .arrow{font-size:22px;opacity:.8}
+.pass.storeCard .strip,.pass.coupon .strip{margin:10px -14px 10px;padding:14px;background:rgba(0,0,0,.18)}
+.pass.storeCard .strip .val,.pass.coupon .strip .val{font-size:28px;font-weight:300;white-space:normal}
+.pass.coupon{border-top:6px dotted rgba(255,255,255,.55)}
+.pass.eventTicket::before{content:"";position:absolute;top:-12px;left:50%;width:24px;height:24px;margin-left:-12px;background:var(--bg);border-radius:50%}
+.pass .fl{display:flex;gap:12px;margin-top:8px}
+.pass .fl > div{flex:1;min-width:0}
+.pass .fl > div:last-child:not(:first-child){text-align:right}
+.pass .code{margin:14px auto 0;background:#fff;color:#000;border-radius:8px;padding:8px;width:fit-content;max-width:100%;text-align:center}
+.pass .code svg{display:block;margin:0 auto;width:118px;height:118px}
+.pass .code .alt{font-size:11px;margin-top:4px;word-break:break-all}
+.pass .code .lin{font:600 11px ui-monospace,Menlo,monospace;padding:12px 6px;letter-spacing:.06em;max-width:240px;word-break:break-all}
+.pass.mini{transform:none;font-size:13px}
+.pass.mini .code svg{width:84px;height:84px}
+.back{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-top:10px;max-width:340px;margin-left:auto;margin-right:auto}
+.back .bf{padding:6px 0;border-bottom:1px solid var(--line)}
+.back .bf:last-child{border:0}
+.back .bf b{display:block;font-size:11px;color:var(--muted);text-transform:uppercase}
+svg.graph{width:100%;height:auto;max-height:420px}
+@media (max-width:899px){#tab-karten .g-edit > .panel:last-child{order:-1}}
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="2" y="5" width="24" height="18" rx="4" fill="#2563eb"/><rect x="5" y="9" width="18" height="4" rx="2" fill="#fff" opacity=".9"/><rect x="5" y="15" width="10" height="3" rx="1.5" fill="#fff" opacity=".6"/></svg>
+      Wallet-Werkbank
+    </div>
+    <div class="status"><span class="dot" id="aiDot"></span><span id="aiStatus">KI nicht verbunden</span><span class="busy" id="busy"><span class="spin"></span><span id="busyText">Claude arbeitet …</span></span></div>
+  </div>
+  <nav id="tabs">
+    <button data-tab="eingang" class="active">Eingang<span class="badge" id="bItems">0</span></button>
+    <button data-tab="verbindungen">Verbindungen &amp; Vorschläge<span class="badge" id="bProps">0</span></button>
+    <button data-tab="karten">Karten<span class="badge" id="bCards">0</span></button>
+    <button data-tab="lernen">Lernprofil</button>
+    <button data-tab="schnittstellen">Schnittstellen</button>
+    <button data-tab="einstellungen">Einstellungen</button>
+  </nav>
+</header>
+
+<main>
+<!-- ============ EINGANG ============ -->
+<section class="tab active" id="tab-eingang">
+  <div class="grid g2">
+    <div class="panel">
+      <h2>Informationen sammeln</h2>
+      <p class="sub">Termine, Buchungsbestätigungen, Mitgliedsdaten, Notizen: einfach hineinkopieren. Claude erkennt danach, was zusammengehört.</p>
+      <label for="inTitle">Titel (optional)</label>
+      <input id="inTitle" placeholder="z. B. Konzert Elbphilharmonie">
+      <label for="inText">Text, Mail, Notiz, Termin</label>
+      <textarea id="inText" placeholder="Buchungsbestätigung, Mitgliedsnummer, Terminnotiz … einfach einfügen"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="b p" id="btnAddText">Hinzufügen</button>
+        <button class="b" id="btnPaste">Aus Zwischenablage</button>
+        <button class="b" id="btnDemo">Beispieldaten</button>
+      </div>
+      <h3>Dateien</h3>
+      <div class="drop" id="drop">Dateien hierher ziehen oder <u>auswählen</u><br><span class="small">.ics (Kalender) · .vcf (Kontakt) · .pkpass (bestehende Karte) · Fotos von Karten/Tickets · PDF · .txt/.eml</span></div>
+      <input type="file" id="fileIn" multiple hidden accept=".ics,.vcf,.pkpass,.txt,.eml,.json,.pdf,image/*,text/calendar,text/vcard">
+      <h3>Kalender-Abo (ICS-Link)</h3>
+      <div class="row"><input id="icsUrl" placeholder="webcal://… oder https://….ics" style="flex:1"><button class="b" id="btnIcsUrl">Laden</button></div>
+      <p class="small muted">Nur zukünftige Termine der nächsten <span id="lblDays">90</span> Tage werden übernommen (Einstellung). Manche Server erlauben keinen Browser-Zugriff (CORS) – dann hilft der Proxy in den Einstellungen.</p>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2>Eingang</h2>
+        <div class="row">
+          <button class="b s" id="btnSelAll">Alle wählen</button>
+          <button class="b s bad" id="btnDelSel">Gewählte löschen</button>
+        </div>
+      </div>
+      <p class="sub">Gewählte Einträge gehen in die Analyse.</p>
+      <div class="list" id="itemList"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="b p" id="btnAnalyze">Mit Claude Verbindungen finden &amp; Karten vorschlagen</button>
+        <button class="b" id="btnLocal">Ohne KI (lokale Regeln)</button>
+      </div>
+      <p class="small muted" id="analyzeHint"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERBINDUNGEN ============ -->
+<section class="tab" id="tab-verbindungen">
+  <div class="grid">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between"><h2>Erkannte Verbindungen</h2><span class="small muted" id="connMeta"></span></div>
+      <p class="sub">Was hängt zusammen? Gleicher Anlass, Reisekette, Mitgliedschaft und Termin, Fristen.</p>
+      <div id="graphWrap"></div>
+      <div class="grid g2" id="connList" style="margin-top:12px"></div>
+      <div id="hintsWrap"></div>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2>Kartenvorschläge</h2>
+        <div class="row"><button class="b s" id="btnAcceptTop">Alle über 70 % übernehmen</button><button class="b s bad" id="btnClearProps">Vorschläge leeren</button></div>
+      </div>
+      <p class="sub">Sortiert nach Relevanz für dich. Jede Entscheidung trainiert dein Lernprofil.</p>
+      <div class="list" id="propList"></div>
+      <div id="questionsWrap"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ KARTEN ============ -->
+<section class="tab" id="tab-karten">
+  <div class="grid g-edit">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2>Karten-Editor</h2>
+        <div class="row"><button class="b s" id="btnNewCard">+ Neue Karte</button></div>
+      </div>
+      <div id="editor"><div class="empty">Wähle rechts eine Karte oder lege eine neue an.</div></div>
+    </div>
+    <div class="panel">
+      <h2>Vorschau</h2>
+      <div id="preview"></div>
+      <div id="exportBox" style="margin-top:14px"></div>
+      <h3>Meine Karten</h3>
+      <div class="cardlist" id="cardList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LERNEN ============ -->
+<section class="tab" id="tab-lernen">
+  <div class="grid g2">
+    <div class="panel">
+      <h2>Was dir wichtig ist</h2>
+      <p class="sub">Die Werkbank lernt aus Übernehmen, Verwerfen, Bearbeiten und Exportieren. Das Profil geht bei jeder Analyse an Claude.</p>
+      <div id="prefCats"></div>
+      <h3>Wörter mit Gewicht</h3>
+      <div id="prefWords"></div>
+      <h3>Gelernte Gestaltung</h3>
+      <div id="prefDesign"></div>
+    </div>
+    <div class="panel">
+      <h2>Deine Regeln</h2>
+      <p class="sub">In eigenen Worten. Claude hält sich daran und schlägt neue Regeln vor.</p>
+      <textarea id="rules" placeholder="z. B.&#10;- Arzttermine immer als Karte mit Adresse&#10;- Keine Geburtstage&#10;- Vereinskarten in Vereinsfarben"></textarea>
+      <div class="row" style="margin-top:8px"><button class="b p" id="btnSaveRules">Regeln speichern</button></div>
+      <div id="ruleSuggest"></div>
+      <h3>Verlauf</h3>
+      <div class="list small" id="history"></div>
+      <div class="row" style="margin-top:12px"><button class="b s bad" id="btnResetPrefs">Lernprofil zurücksetzen</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SCHNITTSTELLEN ============ -->
+<section class="tab" id="tab-schnittstellen">
+  <div class="grid">
+    <div class="panel">
+      <h2>Direkte Konnektoren</h2>
+      <p class="sub">Laufen direkt im Browser. Zugangsdaten bleiben auf diesem Gerät.</p>
+      <div class="grid g3">
+        <div>
+          <h3>Google Kalender</h3>
+          <label>OAuth-Zugriffstoken</label><input id="gToken" type="password" placeholder="ya29.…">
+          <label>Kalender-ID</label><input id="gCal" value="primary">
+          <button class="b" id="btnGoogle" style="margin-top:8px">Termine holen</button>
+          <p class="small muted">Token z. B. über den Google OAuth Playground, Scope <code>calendar.readonly</code>.</p>
+        </div>
+        <div>
+          <h3>Outlook / Microsoft 365</h3>
+          <label>Graph-Zugriffstoken</label><input id="msToken" type="password" placeholder="eyJ0…">
+          <button class="b" id="btnGraph" style="margin-top:8px">Termine holen</button>
+          <p class="small muted">Token z. B. aus dem Graph Explorer, Berechtigung <code>Calendars.Read</code>.</p>
+        </div>
+        <div>
+          <h3>iPhone-Kurzbefehl</h3>
+          <p class="small">Wenn diese Datei unter einer Adresse erreichbar ist (iCloud Drive über einen Webserver, GitHub Pages, Netlify), kann ein Kurzbefehl Text direkt übergeben:</p>
+          <code class="small" id="hashExample" style="word-break:break-all"></code>
+          <p class="small muted">Kurzbefehl: „Kalenderereignisse suchen“ → „Text“ mit Titel/Datum/Ort → „URL codieren“ → „URLs öffnen“ mit <code>…wallet-werkbank.html#add=</code> + Text.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between">
+        <h2>Schnittstellen-Katalog</h2>
+        <div class="row"><select id="catFilter" style="width:auto"></select><input id="catSearch" placeholder="Suchen" style="width:160px"></div>
+      </div>
+      <p class="sub">Woher Daten für Karten kommen können und womit Karten erzeugt und aktualisiert werden.</p>
+      <div style="overflow-x:auto"><table class="cat" id="catTable"></table></div>
+    </div>
+    <div class="panel">
+      <h2>Schnittstelle recherchieren (Claude + Websuche)</h2>
+      <p class="sub">Nenne Anbieter oder Thema (z. B. „Fitnessstudio McFit Mitgliedskarte“, „DFB-Tickets“, „Stadtbibliothek Köln“). Claude sucht aktuelle APIs, Feeds, Wallet-Unterstützung und Wege der Anbindung.</p>
+      <div class="row"><input id="researchQ" placeholder="Anbieter, Verein, Dienst …" style="flex:1"><button class="b p" id="btnResearch">Recherchieren</button></div>
+      <div class="md" id="researchOut" style="margin-top:12px"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EINSTELLUNGEN ============ -->
+<section class="tab" id="tab-einstellungen">
+  <div class="grid g2">
+    <div class="panel">
+      <h2>Claude</h2>
+      <p class="sub">Der Schlüssel geht nur direkt an api.anthropic.com. Ohne Schlüssel arbeitet die Werkbank mit lokalen Regeln.</p>
+      <label for="apiKey">Anthropic API-Schlüssel</label>
+      <input id="apiKey" type="password" placeholder="sk-ant-…" autocomplete="off">
+      <label class="row" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="rememberKey"> Auf diesem Gerät merken</label>
+      <div class="cols2">
+        <div><label for="model">Modell</label>
+          <select id="model">
+            <option value="claude-opus-5-5">Claude Opus 5.5 (Standard)</option>
+            <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (schneller)</option>
+            <option value="claude-haiku-5-5">Claude Haiku 5.5 (sehr günstig)</option>
+          </select></div>
+        <div><label for="effort">Denktiefe</label>
+          <select id="effort"><option value="low">niedrig</option><option value="medium">mittel</option><option value="high">hoch</option></select></div>
+      </div>
+      <label class="row" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="fallbacks"> Bei Ablehnung automatisch auf Ersatzmodell ausweichen</label>
+      <label for="userName">Wie heißt du? (für persönlichere Karten)</label>
+      <input id="userName" placeholder="z. B. Norbert Wolff">
+      <div class="row" style="margin-top:12px"><button class="b p" id="btnSaveAI">Speichern</button><button class="b" id="btnTestAI">Verbindung testen</button></div>
+      <p class="small muted" id="aiTestOut"></p>
+    </div>
+    <div class="panel">
+      <h2>Apple-Wallet-Signatur</h2>
+      <p class="sub">Für eine direkt installierbare <b>.pkpass</b>-Datei braucht es ein Pass-Type-ID-Zertifikat aus dem Apple Developer Program. Alles wird lokal im Browser signiert.</p>
+      <label>Pass-Zertifikat (.p12)</label><input type="file" id="p12File" accept=".p12,.pfx">
+      <label>Passwort des .p12</label><input type="password" id="p12Pass" autocomplete="off">
+      <label>Apple WWDR-Zwischenzertifikat (G4, .cer/.pem)</label><input type="file" id="wwdrFile" accept=".cer,.pem,.crt,.der">
+      <div class="cols2">
+        <div><label>Pass Type ID</label><input id="passTypeId" placeholder="pass.de.beispiel.karten"></div>
+        <div><label>Team ID</label><input id="teamId" placeholder="ABCDE12345"></div>
+      </div>
+      <label class="row" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="rememberCert"> Zertifikate auf diesem Gerät speichern</label>
+      <div class="row" style="margin-top:12px"><button class="b p" id="btnSaveCert">Übernehmen &amp; prüfen</button></div>
+      <p class="small" id="certOut"></p>
+      <div class="notice">Ohne Zertifikat: Karte im iPhone-Wallet über <b>„+“ → Pass erstellen</b> anlegen (ab iOS 26) und den QR-Code bzw. die Feldtexte aus der Werkbank übernehmen, oder das unsignierte Paket an einen Signierdienst geben (siehe Schnittstellen).</div>
+    </div>
+    <div class="panel">
+      <h2>Import / Daten</h2>
+      <label for="days">Zeitraum für Kalender-Importe (Tage voraus)</label><input id="days" type="number" min="1" max="730" value="90">
+      <label for="proxy">CORS-Proxy für ICS-Links (optional, Präfix)</label><input id="proxy" placeholder="z. B. https://mein-proxy.example/?url=">
+      <label for="theme">Darstellung</label><select id="theme"><option value="">automatisch</option><option value="light">hell</option><option value="dark">dunkel</option></select>
+      <div class="row" style="margin-top:12px"><button class="b p" id="btnSaveMisc">Speichern</button></div>
+    </div>
+    <div class="panel">
+      <h2>Sicherung</h2>
+      <p class="sub">Alles liegt im Speicher dieses Browsers. Sichere es als Datei oder zieh es auf ein anderes Gerät um.</p>
+      <div class="row"><button class="b" id="btnBackup">Sicherung herunterladen</button><button class="b" id="btnRestore">Sicherung einspielen</button><input type="file" id="restoreFile" accept=".json" hidden></div>
+      <div class="row" style="margin-top:12px"><button class="b bad" id="btnWipe">Alles löschen</button></div>
+    </div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* =========================================================
+   Grundlagen
+   ========================================================= */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-5);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('wk.' + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) {
+    try { localStorage.setItem('wk.' + k, JSON.stringify(v)); return true; }
+    catch (e) { return false; }
+  },
+  del(k) { try { localStorage.removeItem('wk.' + k); } catch {} }
+};
+
+function toast(msg, ms = 2800) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+function busy(on, text) {
+  $('#busy').classList.toggle('on', !!on);
+  if (text) $('#busyText').textContent = text;
+  $$('#btnAnalyze,#btnResearch,#btnRefine,#btnTestAI').forEach(b => b && (b.disabled = !!on));
+}
+
+/* Kategorien und Kartenstile */
+const CATS = {
+  termin:    { label: 'Termin',            style: 'eventTicket',  bg: '#1e3a5f', fg: '#ffffff', lb: '#bcd0ea' },
+  ereignis:  { label: 'Ereignis / Ticket', style: 'eventTicket',  bg: '#6b1d3a', fg: '#ffffff', lb: '#f2c4d4' },
+  mitglied:  { label: 'Mitgliedskarte',    style: 'storeCard',    bg: '#14532d', fg: '#ffffff', lb: '#bbe5c8' },
+  reise:     { label: 'Reise',             style: 'boardingPass', bg: '#0c4a6e', fg: '#ffffff', lb: '#bae0f5' },
+  gutschein: { label: 'Gutschein',         style: 'coupon',       bg: '#9a3412', fg: '#ffffff', lb: '#fed7aa' },
+  aufgabe:   { label: 'Aufgabe / Frist',   style: 'generic',      bg: '#4c1d95', fg: '#ffffff', lb: '#ddd6fe' },
+  ausweis:   { label: 'Ausweis / Info',    style: 'generic',      bg: '#334155', fg: '#ffffff', lb: '#cbd5e1' },
+  sonstiges: { label: 'Sonstiges',         style: 'generic',      bg: '#1f2937', fg: '#ffffff', lb: '#d1d5db' }
+};
+const STYLES = { eventTicket: 'Event-Ticket', storeCard: 'Kunden-/Mitgliedskarte', coupon: 'Gutschein', boardingPass: 'Bordkarte', generic: 'Allgemein' };
+const BARCODES = { QR: 'PKBarcodeFormatQR', PDF417: 'PKBarcodeFormatPDF417', Aztec: 'PKBarcodeFormatAztec', Code128: 'PKBarcodeFormatCode128', none: '' };
+const TRANSIT = { PKTransitTypeGeneric: 'Allgemein', PKTransitTypeTrain: 'Zug', PKTransitTypeAir: 'Flug', PKTransitTypeBus: 'Bus', PKTransitTypeBoat: 'Schiff' };
+const SECTIONS = [['headerFields', 'Kopf'], ['primaryFields', 'Hauptfeld'], ['secondaryFields', 'Zweite Zeile'], ['auxiliaryFields', 'Zusatz'], ['backFields', 'Rückseite']];
+
+/* =========================================================
+   Zustand
+   ========================================================= */
+function defaultPrefs() {
+  const cats = {}; Object.keys(CATS).forEach(k => cats[k] = { acc: 0, rej: 0, exp: 0, edit: 0 });
+  return { cats, words: {}, colors: {}, labels: {}, rules: '', history: [] };
+}
+function defaultSettings() {
+  return { model: 'claude-opus-5-5', effort: 'medium', fallbacks: true, rememberKey: false, apiKey: '', userName: '', days: 90, proxy: '', theme: '',
+    passTypeId: '', teamId: '', rememberCert: false, p12: '', wwdr: '' };
+}
+const S = {
+  items: store.get('items', []),
+  cards: store.get('cards', []),
+  connections: store.get('connections', []),
+  hints: store.get('hints', []),
+  questions: store.get('questions', []),
+  ruleSuggestions: store.get('ruleSuggestions', []),
+  prefs: Object.assign(defaultPrefs(), store.get('prefs', {})),
+  settings: Object.assign(defaultSettings(), store.get('settings', {})),
+  sel: new Set(),
+  current: null,
+  session: { apiKey: '', p12: '', p12Pass: '', wwdr: '' }
+};
+Object.keys(CATS).forEach(k => { if (!S.prefs.cats[k]) S.prefs.cats[k] = { acc: 0, rej: 0, exp: 0, edit: 0 }; });
+
+function save(...keys) {
+  const all = keys.length ? keys : ['items', 'cards', 'connections', 'hints', 'questions', 'ruleSuggestions', 'prefs', 'settings'];
+  for (const k of all) {
+    let ok = store.set(k, S[k]);
+    if (!ok && k === 'items') {
+      // Speicher voll: Bild- und PDF-Daten nicht dauerhaft speichern
+      const slim = S.items.map(i => i.data ? Object.assign({}, i, { data: '', dataDropped: true }) : i);
+      ok = store.set('items', slim);
+      if (ok) toast('Speicher knapp: Bilder/PDFs werden nur bis zum Neuladen gehalten.', 4500);
+    }
+    if (!ok) toast('Speichern fehlgeschlagen (Browserspeicher voll?)', 4500);
+  }
+}
+const getKey = () => S.session.apiKey || S.settings.apiKey || '';
+
+/* =========================================================
+   Lernen
+   ========================================================= */
+const STOP = new Set('aber alle allem allen aller alles also auch auf aus bei beim bitte dann darf dass dein deine dem den der des die dies diese diesem diesen dieser doch dort durch eine einem einen einer eines euer für gegen haben hast hat hier ihre ihr ihnen ihren immer jetzt kann kein keine mehr mein meine mit muss nach nicht noch nur oder ohne sein seine sich sie sind über uhr und uns unter vom von vor war wenn werden wie wir wird wurde zum zur zwischen ihre einer sowie bzw unsere unser ihrem the and for with your from this that will have bestätigung buchung ihre sehr geehrte geehrter freundlichen grüßen'.split(' '));
+function tokens(s) {
+  return Array.from(new Set(String(s || '').toLowerCase().replace(/[^a-zäöüß0-9 ]+/g, ' ').split(/\s+/)
+    .filter(w => w.length >= 4 && !STOP.has(w) && !/^\d+$/.test(w)))).slice(0, 40);
+}
+function learn(card, action) {
+  const p = S.prefs, c = p.cats[card.category] || (p.cats[card.category] = { acc: 0, rej: 0, exp: 0, edit: 0 });
+  const delta = { accept: 1, reject: -1, export: 2, edit: 0.5 }[action] || 0;
+  if (action === 'accept') c.acc++;
+  if (action === 'reject') c.rej++;
+  if (action === 'export') c.exp++;
+  if (action === 'edit') c.edit++;
+  for (const w of tokens(card.description + ' ' + card.organizationName + ' ' + (card.reason || ''))) {
+    p.words[w] = clamp((p.words[w] || 0) + delta, -10, 10);
+  }
+  if (action === 'export' || action === 'edit') {
+    p.colors[card.category] = { bg: card.colors.bg, fg: card.colors.fg, lb: card.colors.lb };
+    const L = p.labels[card.category] || (p.labels[card.category] = {});
+    SECTIONS.forEach(([s]) => (card.fields[s] || []).forEach(f => { if (f.label) L[f.label] = (L[f.label] || 0) + 1; }));
+  }
+  p.history.unshift({ t: new Date().toISOString(), action, cat: card.category, title: card.description });
+  p.history = p.history.slice(0, 80);
+  // Wortliste klein halten
+  const ws = Object.entries(p.words).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 300);
+  p.words = Object.fromEntries(ws.filter(([, v]) => v !== 0));
+  save('prefs');
+}
+function catRate(cat) {
+  const c = S.prefs.cats[cat] || { acc: 0, rej: 0, exp: 0 };
+  const pos = c.acc + 2 * c.exp;
+  return (pos + 1) / (pos + c.rej + 2);
+}
+function relevance(card) {
+  const imp = clamp(Number(card.importance) || 50, 0, 100) / 100;
+  let w = 0; for (const t of tokens(card.description + ' ' + card.organizationName + ' ' + (card.reason || ''))) w += S.prefs.words[t] || 0;
+  const ws = 1 / (1 + Math.exp(-w / 3));
+  return Math.round(100 * (0.5 * imp + 0.3 * catRate(card.category) + 0.2 * ws));
+}
+function profileSummary() {
+  const p = S.prefs;
+  const cats = Object.entries(p.cats).map(([k, c]) => `${CATS[k] ? CATS[k].label : k}: übernommen ${c.acc}, exportiert ${c.exp}, verworfen ${c.rej}, Quote ${Math.round(catRate(k) * 100)} %`).join('\n');
+  const ws = Object.entries(p.words).sort((a, b) => b[1] - a[1]);
+  const pos = ws.filter(x => x[1] > 0).slice(0, 25).map(x => x[0]).join(', ') || '–';
+  const neg = ws.filter(x => x[1] < 0).slice(-25).map(x => x[0]).join(', ') || '–';
+  const col = Object.entries(p.colors).map(([k, c]) => `${k}: Hintergrund ${c.bg}, Text ${c.fg}, Label ${c.lb}`).join('\n') || '–';
+  const lab = Object.entries(p.labels).map(([k, L]) => `${k}: ` + Object.entries(L).sort((a, b) => b[1] - a[1]).slice(0, 8).map(x => x[0]).join(', ')).join('\n') || '–';
+  return `Kategorien:\n${cats}\nBevorzugte Begriffe: ${pos}\nUnerwünschte Begriffe: ${neg}\nBevorzugte Farben je Kategorie:\n${col}\nGern genutzte Feldbezeichnungen:\n${lab}\nEigene Regeln:\n${p.rules || '–'}`;
+}
+
+/* =========================================================
+   Karten-Modell
+   ========================================================= */
+function newCard(cat = 'sonstiges', patch = {}) {
+  const C = CATS[cat] || CATS.sonstiges, learned = S.prefs.colors[cat];
+  return Object.assign({
+    id: uid(), status: 'draft', category: cat, style: C.style, description: '', organizationName: '', logoText: '',
+    colors: learned ? Object.assign({}, learned) : { bg: C.bg, fg: C.fg, lb: C.lb },
+    fields: { headerFields: [], primaryFields: [], secondaryFields: [], auxiliaryFields: [], backFields: [] },
+    barcode: { format: 'QR', message: '', altText: '' },
+    relevantDate: '', expirationDate: '', locationText: '', lat: '', lon: '', transitType: 'PKTransitTypeGeneric',
+    importance: 50, reason: '', sourceIds: [], serial: uid(), created: new Date().toISOString()
+  }, patch);
+}
+function cardFromAI(c) {
+  const cat = CATS[c.category] ? c.category : 'sonstiges';
+  const style = STYLES[c.style] ? c.style : CATS[cat].style;
+  const mf = arr => (arr || []).filter(f => f && (f.label || f.value)).map(f => ({ key: f.key || '', label: f.label || '', value: f.value || '' }));
+  const learned = S.prefs.colors[cat];
+  const hex = (v, d) => /^#[0-9a-f]{6}$/i.test(v || '') ? v : d;
+  const C = CATS[cat];
+  return newCard(cat, {
+    status: 'proposed', style,
+    description: c.description || '', organizationName: c.organization || '', logoText: c.logo_text || '',
+    colors: {
+      bg: hex(c.colors && c.colors.background, learned ? learned.bg : C.bg),
+      fg: hex(c.colors && c.colors.foreground, learned ? learned.fg : C.fg),
+      lb: hex(c.colors && c.colors.label, learned ? learned.lb : C.lb)
+    },
+    fields: { headerFields: mf(c.header_fields), primaryFields: mf(c.primary_fields), secondaryFields: mf(c.secondary_fields), auxiliaryFields: mf(c.auxiliary_fields), backFields: mf(c.back_fields) },
+    barcode: { format: BARCODES[c.barcode && c.barcode.format] !== undefined ? c.barcode.format : 'QR', message: (c.barcode && c.barcode.message) || '', altText: (c.barcode && c.barcode.alt_text) || '' },
+    relevantDate: c.relevant_date || '', expirationDate: c.expiration_date || '', locationText: c.location_text || '',
+    lat: c.latitude || '', lon: c.longitude || '', transitType: TRANSIT[c.transit_type] ? c.transit_type : 'PKTransitTypeGeneric',
+    importance: clamp(parseInt(c.importance, 10) || 50, 0, 100), reason: c.reason || '', sourceIds: c.source_item_ids || []
+  });
+}
+
+/* =========================================================
+   Datum
+   ========================================================= */
+const pad = n => String(n).padStart(2, '0');
+function fmtDate(iso, withTime = true) {
+  if (!iso) return '';
+  const d = new Date(iso); if (isNaN(d)) return iso;
+  const s = `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+  return withTime && (d.getHours() || d.getMinutes()) ? `${s}, ${pad(d.getHours())}:${pad(d.getMinutes())}` : s;
+}
+function toLocalInput(iso) {
+  if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return '';
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromLocalInput(v) { if (!v) return ''; const d = new Date(v); return isNaN(d) ? '' : isoOffset(d); }
+function isoOffset(d) {
+  const o = -d.getTimezoneOffset(), sign = o >= 0 ? '+' : '-', a = Math.abs(o);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${sign}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
+}
+
+/* =========================================================
+   Parser: ICS, vCard, pkpass
+   ========================================================= */
+function parseICSDate(v, params) {
+  if (!v) return '';
+  const m = v.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/);
+  if (!m) return '';
+  const [, y, mo, d, h = '00', mi = '00', s = '00', z] = m;
+  if (z) return new Date(Date.UTC(+y, mo - 1, +d, +h, +mi, +s)).toISOString();
+  // TZID wird als lokale Zeit dieses Geräts gelesen
+  return isoOffset(new Date(+y, mo - 1, +d, +h, +mi, +s));
+}
+function parseICS(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '').split('\n');
+  const evs = []; let cur = null;
+  const un = s => s.replace(/\\n/gi, '\n').replace(/\\,/g, ',').replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+  for (const line of lines) {
+    if (line === 'BEGIN:VEVENT') { cur = {}; continue; }
+    if (line === 'END:VEVENT') { if (cur) evs.push(cur); cur = null; continue; }
+    if (!cur) continue;
+    const i = line.indexOf(':'); if (i < 0) continue;
+    const left = line.slice(0, i), val = line.slice(i + 1);
+    const [name, ...params] = left.split(';');
+    const N = name.toUpperCase();
+    if (N === 'SUMMARY') cur.title = un(val);
+    else if (N === 'DESCRIPTION') cur.text = un(val);
+    else if (N === 'LOCATION') cur.location = un(val);
+    else if (N === 'URL') cur.url = val;
+    else if (N === 'DTSTART') { cur.start = parseICSDate(val, params); cur.allDay = /VALUE=DATE(?!-)/i.test(left); }
+    else if (N === 'DTEND') cur.end = parseICSDate(val, params);
+    else if (N === 'RRULE') cur.rrule = val;
+    else if (N === 'ORGANIZER') cur.organizer = val.replace(/^mailto:/i, '');
+  }
+  return evs;
+}
+function inRange(iso) {
+  if (!iso) return true;
+  const t = new Date(iso).getTime(), now = Date.now() - 864e5, until = Date.now() + (S.settings.days || 90) * 864e5;
+  return t >= now && t <= until;
+}
+function addEvents(evs, source) {
+  let n = 0, skipped = 0;
+  for (const e of evs) {
+    if (!inRange(e.start) && !e.rrule) { skipped++; continue; }
+    S.items.unshift({ id: uid(), kind: 'termin', title: e.title || 'Termin', start: e.start || '', end: e.end || '', location: e.location || '',
+      text: [e.text, e.url, e.rrule ? 'Wiederholung: ' + e.rrule : '', e.organizer ? 'Organisator: ' + e.organizer : ''].filter(Boolean).join('\n'), source, created: new Date().toISOString() });
+    n++;
+  }
+  save('items'); renderItems();
+  toast(`${n} Termine übernommen` + (skipped ? `, ${skipped} außerhalb des Zeitraums übersprungen` : ''));
+}
+function parseVCF(text) {
+  const cards = text.replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '').split(/BEGIN:VCARD/i).slice(1);
+  return cards.map(block => {
+    const get = k => { const m = block.match(new RegExp('^' + k + '(?:;[^:\\n]*)?:(.*)$', 'im')); return m ? m[1].replace(/\\,/g, ',').replace(/\\n/gi, '\n').trim() : ''; };
+    const all = k => Array.from(block.matchAll(new RegExp('^' + k + '(?:;[^:\\n]*)?:(.*)$', 'gim'))).map(m => m[1].trim());
+    return { fn: get('FN'), org: get('ORG').replace(/;/g, ' '), tel: all('TEL'), email: all('EMAIL'), note: get('NOTE'), url: get('URL'), adr: get('ADR').replace(/;+/g, ' ').trim() };
+  });
+}
+async function readPkpass(buf) {
+  if (!window.JSZip) throw new Error('JSZip nicht geladen (offline?)');
+  const zip = await JSZip.loadAsync(buf);
+  const f = zip.file('pass.json'); if (!f) throw new Error('pass.json fehlt');
+  return JSON.parse(await f.async('string'));
+}
+function cardFromPassJson(pj) {
+  const style = Object.keys(STYLES).find(s => pj[s]) || 'generic';
+  const cat = { eventTicket: 'ereignis', storeCard: 'mitglied', coupon: 'gutschein', boardingPass: 'reise', generic: 'sonstiges' }[style];
+  const sec = pj[style] || {};
+  const rgb2hex = v => { const m = String(v || '').match(/(\d+)\D+(\d+)\D+(\d+)/); return m ? '#' + [m[1], m[2], m[3]].map(x => (+x).toString(16).padStart(2, '0')).join('') : ''; };
+  const bc = (pj.barcodes && pj.barcodes[0]) || pj.barcode || {};
+  const fmt = Object.keys(BARCODES).find(k => BARCODES[k] === bc.format) || 'QR';
+  const f = a => (a || []).map(x => ({ key: x.key || '', label: x.label || '', value: String(x.value ?? '') }));
+  const loc = (pj.locations || [])[0] || {};
+  return newCard(cat, {
+    status: 'accepted', style, description: pj.description || '', organizationName: pj.organizationName || '', logoText: pj.logoText || '',
+    colors: { bg: rgb2hex(pj.backgroundColor) || CATS[cat].bg, fg: rgb2hex(pj.foregroundColor) || '#ffffff', lb: rgb2hex(pj.labelColor) || CATS[cat].lb },
+    fields: { headerFields: f(sec.headerFields), primaryFields: f(sec.primaryFields), secondaryFields: f(sec.secondaryFields), auxiliaryFields: f(sec.auxiliaryFields), backFields: f(sec.backFields) },
+    barcode: { format: bc.message ? fmt : 'none', message: bc.message || '', altText: bc.altText || '' },
+    relevantDate: pj.relevantDate || '', expirationDate: pj.expirationDate || '', lat: loc.latitude ?? '', lon: loc.longitude ?? '', locationText: loc.relevantText || '',
+    transitType: sec.transitType || 'PKTransitTypeGeneric', reason: 'Aus bestehender .pkpass importiert'
+  });
+}
+
+/* =========================================================
+   Eingang
+   ========================================================= */
+function addItem(it) { S.items.unshift(Object.assign({ id: uid(), created: new Date().toISOString() }, it)); save('items'); renderItems(); }
+const fileToDataURL = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+
+async function handleFiles(files) {
+  for (const f of files) {
+    const name = f.name.toLowerCase();
+    try {
+      if (name.endsWith('.ics') || f.type === 'text/calendar') addEvents(parseICS(await f.text()), 'Datei ' + f.name);
+      else if (name.endsWith('.vcf') || f.type.includes('vcard')) {
+        for (const v of parseVCF(await f.text())) addItem({ kind: 'kontakt', title: v.org || v.fn || 'Kontakt', text: [v.fn, v.org, v.tel.join(', '), v.email.join(', '), v.adr, v.url, v.note].filter(Boolean).join('\n'), source: f.name });
+      } else if (name.endsWith('.pkpass')) {
+        const pj = await readPkpass(await f.arrayBuffer());
+        const card = cardFromPassJson(pj); S.cards.unshift(card); save('cards');
+        addItem({ kind: 'karte', title: pj.description || pj.organizationName || 'Wallet-Karte', text: JSON.stringify(pj).slice(0, 4000), source: f.name });
+        renderCards(); toast('Karte importiert – im Tab „Karten“ bearbeitbar');
+      } else if (f.type.startsWith('image/')) {
+        if (f.size > 5 * 1024 * 1024) { toast(`${f.name}: Bild über 5 MB – bitte verkleinern.`, 4500); continue; }
+        addItem({ kind: 'bild', title: f.name, text: 'Foto/Screenshot – Claude liest den Inhalt.', mime: f.type, data: await fileToDataURL(f), source: f.name });
+      } else if (f.type === 'application/pdf' || name.endsWith('.pdf')) {
+        if (f.size > 20 * 1024 * 1024) { toast(`${f.name}: PDF über 20 MB.`, 4500); continue; }
+        addItem({ kind: 'pdf', title: f.name, text: 'PDF – Claude liest den Inhalt.', mime: 'application/pdf', data: await fileToDataURL(f), source: f.name });
+      } else {
+        const t = await f.text();
+        addItem({ kind: 'text', title: f.name, text: t, source: f.name });
+      }
+    } catch (e) { toast(`${f.name}: ${e.message}`, 4500); }
+  }
+}
+
+function itemLine(it) {
+  const bits = [];
+  if (it.start) bits.push(fmtDate(it.start));
+  if (it.location) bits.push(it.location);
+  if (it.source) bits.push(it.source);
+  return bits.join(' · ');
+}
+function renderItems() {
+  const L = $('#itemList');
+  $('#bItems').textContent = S.items.length;
+  if (!S.items.length) { L.innerHTML = '<div class="empty">Noch nichts im Eingang. Text einfügen, Datei ablegen oder Beispieldaten laden.</div>'; return; }
+  L.innerHTML = S.items.map(it => `
+    <div class="item">
+      <input type="checkbox" data-sel="${it.id}" ${S.sel.has(it.id) ? 'checked' : ''} aria-label="auswählen">
+      <span class="kind">${esc(it.kind)}</span>
+      <div class="meta">
+        <div class="t">${esc(it.title)}</div>
+        <div class="d">${esc(itemLine(it))}${it.dataDropped ? ' · <span class="tag-warn">Datei nicht mehr gespeichert</span>' : ''}</div>
+        ${it.text ? `<div class="d">${esc(it.text.slice(0, 160))}${it.text.length > 160 ? ' …' : ''}</div>` : ''}
+      </div>
+      <button class="b s" data-quick="${it.id}" title="Direkt als Karte">Karte</button>
+      <button class="b s bad" data-del="${it.id}" aria-label="löschen">×</button>
+    </div>`).join('');
+  const n = S.sel.size;
+  $('#analyzeHint').textContent = n ? `${n} Einträge gewählt.` : 'Keine Auswahl: Es werden alle Einträge analysiert.';
+}
+
+/* =========================================================
+   Claude-Anbindung (Messages API, direkt aus dem Browser)
+   ========================================================= */
+async function claude({ system, messages, schema, tools, maxTokens = 16000 }) {
+  const key = getKey();
+  if (!key) throw new Error('Kein API-Schlüssel hinterlegt (Einstellungen).');
+  const model = S.settings.model;
+  const body = { model, max_tokens: maxTokens, system, messages: messages.slice(), output_config: { effort: S.settings.effort || 'medium' } };
+  if (schema) body.output_config.format = { type: 'json_schema', schema };
+  if (tools) body.tools = tools;
+  const headers = { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2026-10-21', 'anthropic-dangerous-direct-browser-access': 'true' };
+  let useFallback = S.settings.fallbacks && model !== 'claude-haiku-5-5';
+  let msg, rounds = 0;
+  while (true) {
+    const h = Object.assign({}, headers), b = Object.assign({}, body);
+    if (useFallback) { h['anthropic-beta'] = 'server-side-fallback-2026-07-01'; b.fallbacks = 'default'; }
+    let res;
+    try { res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: h, body: JSON.stringify(b) }); }
+    catch (e) { throw new Error('Netzwerkfehler: ' + e.message); }
+    if (!res.ok) {
+      let detail = ''; try { const j = await res.json(); detail = j.error ? j.error.message : JSON.stringify(j); } catch {}
+      if (res.status === 400 && useFallback && /fallback/i.test(detail)) { useFallback = false; continue; }
+      const hint = { 401: 'Schlüssel ungültig.', 403: 'Kein Zugriff.', 429: 'Ratenlimit – kurz warten.', 529: 'Überlastet – später erneut.' }[res.status] || '';
+      throw new Error(`API ${res.status}: ${detail} ${hint}`.trim());
+    }
+    msg = await res.json();
+    if (msg.stop_reason === 'pause_turn' && rounds++ < 4) { body.messages.push({ role: 'assistant', content: msg.content }); continue; }
+    break;
+  }
+  if (msg.stop_reason === 'refusal') throw new Error('Claude hat die Anfrage abgelehnt' + (msg.stop_details && msg.stop_details.explanation ? ': ' + msg.stop_details.explanation : '.'));
+  if (msg.stop_reason === 'max_tokens') throw new Error('Antwort zu lang und abgeschnitten – bitte weniger Einträge auf einmal analysieren.');
+  msg.text = (msg.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+  return msg;
+}
+function parseJSON(t) {
+  try { return JSON.parse(t); } catch {}
+  const m = t.match(/\{[\s\S]*\}/); if (m) { try { return JSON.parse(m[0]); } catch {} }
+  throw new Error('Antwort war kein gültiges JSON.');
+}
+
+/* JSON-Schema für Karten (strukturierte Ausgabe) */
+const FIELD = { type: 'object', additionalProperties: false, required: ['key', 'label', 'value'], properties: { key: { type: 'string' }, label: { type: 'string' }, value: { type: 'string' } } };
+const FIELDS = { type: 'array', items: FIELD };
+const CARD_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['category', 'style', 'description', 'organization', 'logo_text', 'importance', 'reason', 'source_item_ids', 'header_fields', 'primary_fields', 'secondary_fields', 'auxiliary_fields', 'back_fields', 'barcode', 'colors', 'relevant_date', 'expiration_date', 'location_text', 'latitude', 'longitude', 'transit_type'],
+  properties: {
+    category: { type: 'string', enum: Object.keys(CATS) },
+    style: { type: 'string', enum: Object.keys(STYLES) },
+    description: { type: 'string', description: 'Kurzbeschreibung der Karte (für Bedienungshilfen und Listen)' },
+    organization: { type: 'string' },
+    logo_text: { type: 'string', description: 'Text neben dem Logo, max. ~20 Zeichen' },
+    importance: { type: 'integer', description: '0-100, wie nützlich die Karte für diese Person ist' },
+    reason: { type: 'string', description: 'Ein Satz: warum diese Karte, welche Verbindung' },
+    source_item_ids: { type: 'array', items: { type: 'string' } },
+    header_fields: FIELDS, primary_fields: FIELDS, secondary_fields: FIELDS, auxiliary_fields: FIELDS, back_fields: FIELDS,
+    barcode: { type: 'object', additionalProperties: false, required: ['format', 'message', 'alt_text'], properties: { format: { type: 'string', enum: Object.keys(BARCODES) }, message: { type: 'string' }, alt_text: { type: 'string' } } },
+    colors: { type: 'object', additionalProperties: false, required: ['background', 'foreground', 'label'], properties: { background: { type: 'string', description: '#RRGGBB' }, foreground: { type: 'string' }, label: { type: 'string' } } },
+    relevant_date: { type: 'string', description: 'ISO 8601 mit Zeitzonen-Offset oder leer' },
+    expiration_date: { type: 'string', description: 'ISO 8601 mit Offset oder leer' },
+    location_text: { type: 'string', description: 'Adresse/Ort, sonst leer' },
+    latitude: { type: 'string', description: 'Dezimalgrad nur wenn sicher bekannt, sonst leer' },
+    longitude: { type: 'string' },
+    transit_type: { type: 'string', enum: Object.keys(TRANSIT) }
+  }
+};
+const ANALYSIS_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['connections', 'cards', 'interface_hints', 'suggested_rules', 'open_questions'],
+  properties: {
+    connections: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['label', 'relation', 'item_ids', 'insight'], properties: {
+      label: { type: 'string' }, relation: { type: 'string', description: 'Art der Verbindung, z. B. gleicher Anlass, Reisekette, Mitgliedschaft, Frist, wiederkehrend' },
+      item_ids: { type: 'array', items: { type: 'string' } }, insight: { type: 'string' } } } },
+    cards: { type: 'array', items: CARD_SCHEMA },
+    interface_hints: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['topic', 'interface', 'how'], properties: { topic: { type: 'string' }, interface: { type: 'string' }, how: { type: 'string' } } } },
+    suggested_rules: { type: 'array', items: { type: 'string' } },
+    open_questions: { type: 'array', items: { type: 'string' } }
+  }
+};
+const REFINE_SCHEMA = { type: 'object', additionalProperties: false, required: ['card', 'change_summary'], properties: { card: CARD_SCHEMA, change_summary: { type: 'string' } } };
+
+function systemPrompt() {
+  const now = new Date();
+  return `Du bist die KI in der „Wallet-Werkbank“${S.settings.userName ? ' von ' + S.settings.userName : ''}. Die Person erstellt auf dem iPhone Karten für Apple Wallet.
+Heute ist ${now.toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}, Zeitzone ${Intl.DateTimeFormat().resolvedOptions().timeZone}, Offset ${isoOffset(now).slice(-6)}.
+
+Deine Aufgabe:
+1. Verbindungen erkennen: Welche Einträge gehören zusammen (gleicher Anlass, Reisekette aus Zug/Flug/Hotel/Veranstaltung, Mitgliedschaft und zugehörige Termine, Fristen und Aufgaben, wiederkehrende Termine, gleiche Organisation)? Nenne pro Verbindung die IDs und einen kurzen Nutzen-Hinweis.
+2. Karten vorschlagen, die im Alltag wirklich helfen: Die Karte erscheint zur richtigen Zeit (relevant_date) oder am richtigen Ort (Koordinaten) auf dem Sperrbildschirm und hält Codes, Nummern, Adressen und Ansprechpartner bereit. Bündle Zusammengehöriges in einer Karte, statt viele Einzelkarten zu machen. Keine Karte für Belangloses.
+3. Schnittstellen-Hinweise: Wenn du einen Anbieter erkennst, für den es eine Datenquelle gibt (API, ICS-Abo, Wallet-Unterstützung des Anbieters, App), nenne sie knapp.
+4. Lernen: Halte dich an das Lernprofil und die Regeln der Person. Schlage neue Regeln vor, wenn du ein Muster in ihren Entscheidungen siehst.
+
+Regeln für Karten:
+- Erfinde keine Daten. Barcode-Inhalt nur aus echten Nummern/Codes der Quelle (Mitglieds-, Buchungs-, Ticketnummer) oder eine passende URL aus der Quelle; sonst format "none" und message leer.
+- Stil: eventTicket für Termine/Veranstaltungen, storeCard für Mitglieds-/Kundenkarten, boardingPass nur für Reisen mit Start und Ziel (dann primary_fields = [Abfahrt, Ziel] und transit_type passend), coupon für Gutscheine, generic sonst.
+- Feldtexte kurz: primary höchstens ~20 Zeichen, header 1 Feld, secondary/auxiliary je bis zu 3 Felder. Details, Adressen, Telefonnummern, Hinweise auf die Rückseite (back_fields).
+- Feld-keys eindeutig, klein, ohne Leerzeichen.
+- Farben als #RRGGBB mit gutem Kontrast; nimm Markenfarben, wenn bekannt, sonst die gelernten Farben der Kategorie.
+- Datumsangaben ISO 8601 mit Offset. relevant_date = Beginn des Termins. expiration_date = sinnvolles Ende (z. B. Ende des Termins + 1 Tag, Ablauf der Mitgliedschaft) oder leer.
+- Koordinaten nur, wenn du dir sicher bist; sonst leer lassen.
+- Sprache: Deutsch, sachlich.`;
+}
+
+function itemPayload(items) {
+  const blocks = [];
+  let textPart = '';
+  for (const it of items) {
+    textPart += `\n--- Eintrag ${it.id} (${it.kind}) ---\nTitel: ${it.title}\n` +
+      (it.start ? `Beginn: ${it.start}\n` : '') + (it.end ? `Ende: ${it.end}\n` : '') + (it.location ? `Ort: ${it.location}\n` : '') +
+      (it.source ? `Quelle: ${it.source}\n` : '') + (it.text && !it.data ? `Inhalt:\n${it.text}\n` : '');
+    if (it.data) {
+      const [head, b64] = it.data.split(',');
+      const mt = (head.match(/data:([^;]+)/) || [])[1] || it.mime;
+      blocks.push({ type: 'text', text: `Datei zu Eintrag ${it.id} („${it.title}“):` });
+      if (mt === 'application/pdf') blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: b64 } });
+      else blocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: b64 } });
+    }
+  }
+  return { textPart, blocks };
+}
+
+async function analyzeAI() {
+  const items = S.sel.size ? S.items.filter(i => S.sel.has(i.id)) : S.items.slice();
+  if (!items.length) return toast('Eingang ist leer.');
+  if (!getKey()) { toast('Kein API-Schlüssel – nutze lokale Regeln.'); return analyzeLocal(); }
+  const totalChars = items.reduce((a, i) => a + (i.text || '').length, 0);
+  if (items.length > 150 || totalChars > 400000) {
+    if (!confirm(`${items.length} Einträge mit ~${Math.round(totalChars / 1000)}k Zeichen. Das wird teuer und langsam. Trotzdem senden? (Tipp: Einträge auswählen)`)) return;
+  }
+  const missing = items.filter(i => i.dataDropped);
+  if (missing.length) toast(`${missing.length} Datei(en) sind nicht mehr gespeichert und gehen nur mit Titel in die Analyse.`, 4500);
+  const { textPart, blocks } = itemPayload(items);
+  const existing = S.cards.filter(c => c.status !== 'rejected').slice(0, 40).map(c => `- ${c.description} (${c.category}, ${c.status})`).join('\n') || '–';
+  const content = [
+    ...blocks,
+    { type: 'text', text: `LERNPROFIL DER PERSON\n${profileSummary()}\n\nBEREITS VORHANDENE KARTEN (nicht doppelt vorschlagen)\n${existing}\n\nEINGANGSDATEN${textPart}\n\nFinde die Verbindungen und schlage die Karten vor.` }
+  ];
+  busy(true, 'Claude sucht Verbindungen …');
+  try {
+    const msg = await claude({ system: systemPrompt(), messages: [{ role: 'user', content }], schema: ANALYSIS_SCHEMA });
+    const r = parseJSON(msg.text);
+    applyAnalysis(r, 'Claude (' + (msg.model || S.settings.model) + ')');
+  } catch (e) { toast(e.message, 6000); }
+  finally { busy(false); }
+}
+function applyAnalysis(r, by, built = false) {
+  const ids = new Set(S.items.map(i => i.id));
+  S.connections = (r.connections || []).map(c => Object.assign({ id: uid(), by }, c, { item_ids: (c.item_ids || []).filter(i => ids.has(i)) }));
+  S.hints = r.interface_hints || [];
+  S.questions = r.open_questions || [];
+  S.ruleSuggestions = r.suggested_rules || [];
+  S.cards = S.cards.filter(c => c.status !== 'proposed');
+  const props = (r.cards || []).map(c => built ? c : cardFromAI(c)).map(c => (c.status = 'proposed', c));
+  S.cards.unshift(...props);
+  save();
+  renderAll();
+  showTab('verbindungen');
+  toast(`${S.connections.length} Verbindungen, ${props.length} Vorschläge`);
+}
+
+/* Lokale Regeln ohne KI */
+const RX = {
+  date: /(\d{1,2})\.(\d{1,2})\.(\d{2,4})(?:[^\d]{1,12}(\d{1,2})[:.](\d{2}))?/,
+  member: /(mitglieds?|kunden|karten|ausweis)[- ]?(?:nr|nummer|no|id)\.?\s*[:#]?\s*([A-Z0-9][A-Z0-9 -]{3,24}[A-Z0-9])/i,
+  booking: /(buchungs|auftrags|ticket|reservierungs|bestell)[- ]?(?:nr|nummer|code|no)\.?\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{3,24})/i,
+  url: /https?:\/\/[^\s<>"]+/
+};
+function guessCat(s) {
+  s = s.toLowerCase();
+  if (/(flug|zug|bahn|ice |abfahrt|gleis|boarding|hotel|check-in|reise)/.test(s)) return 'reise';
+  if (/(konzert|ticket|festival|theater|kino|spiel|stadion|messe|veranstaltung|event)/.test(s)) return 'ereignis';
+  if (/(mitglied|verein|club|fitness|studio|bibliothek|ausweis|kundenkarte|bonus)/.test(s)) return 'mitglied';
+  if (/(gutschein|rabatt|coupon|code für)/.test(s)) return 'gutschein';
+  if (/(frist|abgabe|deadline|bis zum|zahlung fällig|kündig)/.test(s)) return 'aufgabe';
+  if (/(arzt|termin|praxis|meeting|besprechung|treffen|werkstatt|friseur)/.test(s)) return 'termin';
+  return 'sonstiges';
+}
+function analyzeLocal() {
+  const items = S.sel.size ? S.items.filter(i => S.sel.has(i.id)) : S.items.slice();
+  if (!items.length) return toast('Eingang ist leer.');
+  const { cards, conns } = localRules(items);
+  applyAnalysis({ connections: conns, cards, interface_hints: [], suggested_rules: [], open_questions: [] }, 'lokale Regeln', true);
+}
+function localRules(items) {
+  const cards = [], conns = [];
+  for (const it of items) {
+    const all = `${it.title}\n${it.text || ''}\n${it.location || ''}`;
+    const cat = it.kind === 'kontakt' ? (guessCat(all) === 'mitglied' ? 'mitglied' : 'sonstiges') : guessCat(all);
+    let start = it.start;
+    if (!start) { const m = all.match(RX.date); if (m) { let y = +m[3]; if (y < 100) y += 2000; const d = new Date(y, m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)); if (!isNaN(d)) start = isoOffset(d); } }
+    const mem = all.match(RX.member), book = all.match(RX.booking), url = all.match(RX.url);
+    const code = (mem && mem[2]) || (book && book[2]) || '';
+    const c = newCard(cat, { status: 'proposed', description: it.title, organizationName: it.title, logoText: it.title.slice(0, 22), sourceIds: [it.id], relevantDate: start || '', locationText: it.location || '', importance: start ? 60 : 45, reason: 'Lokale Regel: ' + CATS[cat].label + (code ? ', Code erkannt' : '') });
+    if (start) {
+      c.fields.headerFields.push({ key: 'datum', label: 'Datum', value: fmtDate(start, false) });
+      c.fields.primaryFields.push({ key: 'titel', label: CATS[cat].label, value: it.title.slice(0, 24) });
+      const d = new Date(start); if (d.getHours() || d.getMinutes()) c.fields.secondaryFields.push({ key: 'zeit', label: 'Uhrzeit', value: `${pad(d.getHours())}:${pad(d.getMinutes())}` });
+      const exp = new Date((it.end ? new Date(it.end) : d).getTime() + 864e5); c.expirationDate = isoOffset(exp);
+    } else c.fields.primaryFields.push({ key: 'titel', label: CATS[cat].label, value: it.title.slice(0, 24) });
+    if (it.location) c.fields.secondaryFields.push({ key: 'ort', label: 'Ort', value: it.location.split(',')[0].slice(0, 28) });
+    if (code) { c.barcode = { format: cat === 'mitglied' ? 'Code128' : 'QR', message: code.trim(), altText: code.trim() }; c.fields.auxiliaryFields.push({ key: 'nr', label: mem ? 'Mitglieds-Nr.' : 'Buchung', value: code.trim() }); }
+    else if (url) c.barcode = { format: 'QR', message: url[0], altText: '' };
+    else c.barcode = { format: 'none', message: '', altText: '' };
+    if (it.location) c.fields.backFields.push({ key: 'adresse', label: 'Adresse', value: it.location });
+    if (it.text && !it.data) c.fields.backFields.push({ key: 'info', label: 'Details', value: it.text.slice(0, 600) });
+    cards.push(c);
+  }
+  // Verbindungen: gleicher Tag oder gemeinsame Begriffe
+  const byDay = {};
+  items.forEach(i => { const c = cards.find(x => x.sourceIds[0] === i.id); const d = c && c.relevantDate ? c.relevantDate.slice(0, 10) : ''; if (d) (byDay[d] = byDay[d] || []).push(i.id); });
+  Object.entries(byDay).forEach(([d, ids]) => ids.length > 1 && conns.push({ label: 'Gleicher Tag: ' + fmtDate(d, false), relation: 'gleicher Tag', item_ids: ids, insight: 'Diese Einträge fallen auf denselben Tag – evtl. eine gemeinsame Tageskarte.' }));
+  for (let a = 0; a < items.length; a++) for (let b = a + 1; b < items.length; b++) {
+    const ta = tokens(items[a].title + ' ' + items[a].text), tb = new Set(tokens(items[b].title + ' ' + items[b].text));
+    const common = ta.filter(t => tb.has(t));
+    if (common.length >= 2) conns.push({ label: 'Gemeinsames Thema: ' + common.slice(0, 3).join(', '), relation: 'gemeinsame Begriffe', item_ids: [items[a].id, items[b].id], insight: 'Ähnlicher Inhalt – evtl. in einer Karte bündeln.' });
+  }
+  return { cards, conns };
+}
+
+/* =========================================================
+   Vorschläge & Verbindungen
+   ========================================================= */
+function itemTitle(id) { const i = S.items.find(x => x.id === id); return i ? i.title : id; }
+function renderConnections() {
+  const C = S.connections;
+  $('#connMeta').textContent = C.length ? `${C.length} Verbindungen` + (C[0] && C[0].by ? ' · ' + C[0].by : '') : '';
+  $('#connList').innerHTML = C.length ? C.map(c => `
+    <div class="conn"><div class="t">${esc(c.label)}</div>
+      <div class="small muted">${esc(c.relation)}</div>
+      <div style="margin:6px 0">${(c.item_ids || []).map(id => `<span class="chip">${esc(itemTitle(id))}</span>`).join('')}</div>
+      <div class="small">${esc(c.insight)}</div></div>`).join('')
+    : '<div class="empty">Noch keine Analyse. Im Eingang „Verbindungen finden“ starten.</div>';
+  $('#graphWrap').innerHTML = graphSVG();
+  $('#hintsWrap').innerHTML = S.hints.length ? `<h3>Mögliche Schnittstellen</h3><div class="list">${S.hints.map(h => `<div class="item"><span class="kind">API</span><div class="meta"><div class="t">${esc(h.topic)}: ${esc(h.interface)}</div><div class="d">${esc(h.how)}</div></div><button class="b s" data-research="${esc(h.topic + ' ' + h.interface)}">Recherchieren</button></div>`).join('')}</div>` : '';
+}
+function graphSVG() {
+  const ids = Array.from(new Set(S.connections.flatMap(c => c.item_ids || [])));
+  if (ids.length < 2) return '';
+  const W = 640, H = 360, cx = W / 2, cy = H / 2, R = Math.min(W, H) / 2 - 50;
+  const pos = {}; ids.forEach((id, i) => { const a = (i / ids.length) * Math.PI * 2 - Math.PI / 2; pos[id] = [cx + R * Math.cos(a) * 1.35, cy + R * Math.sin(a)]; });
+  const palette = ['#2563eb', '#db2777', '#16a34a', '#ea580c', '#7c3aed', '#0891b2', '#ca8a04'];
+  let edges = '';
+  S.connections.forEach((c, k) => { const v = c.item_ids || []; const col = palette[k % palette.length];
+    for (let i = 1; i < v.length; i++) { const [x1, y1] = pos[v[0]], [x2, y2] = pos[v[i]]; edges += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2.5" opacity=".7"><title>${esc(c.label)}</title></line>`; } });
+  const nodes = ids.map(id => { const [x, y] = pos[id]; const t = itemTitle(id); const s = t.length > 22 ? t.slice(0, 21) + '…' : t;
+    return `<g><circle cx="${x}" cy="${y}" r="7" fill="var(--panel)" stroke="var(--accent)" stroke-width="2.5"/><text x="${x}" y="${y + (y < cy ? -12 : 20)}" text-anchor="middle" font-size="12" fill="currentColor">${esc(s)}</text></g>`; }).join('');
+  return `<svg class="graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Netz der Verbindungen">${edges}${nodes}</svg>`;
+}
+function renderProposals() {
+  const props = S.cards.filter(c => c.status === 'proposed').map(c => (c._rel = relevance(c), c)).sort((a, b) => b._rel - a._rel);
+  $('#bProps').textContent = props.length;
+  $('#propList').innerHTML = props.length ? props.map(c => `
+    <div class="prop">
+      <div>${passHTML(c, true)}</div>
+      <div>
+        <div class="row" style="justify-content:space-between"><b>${esc(c.description || '(ohne Titel)')}</b><span class="score">${c._rel} %</span></div>
+        <div class="bar" style="margin:6px 0"><i style="width:${c._rel}%"></i></div>
+        <div class="small muted">${esc(CATS[c.category].label)} · ${esc(STYLES[c.style])}${c.relevantDate ? ' · ' + esc(fmtDate(c.relevantDate)) : ''}</div>
+        <p class="small">${esc(c.reason)}</p>
+        <div>${(c.sourceIds || []).map(id => `<span class="chip">${esc(itemTitle(id))}</span>`).join('')}</div>
+        <div class="row" style="margin-top:10px">
+          <button class="b s p" data-accept="${c.id}">Übernehmen</button>
+          <button class="b s" data-edit="${c.id}">Bearbeiten</button>
+          <button class="b s bad" data-reject="${c.id}">Verwerfen</button>
+        </div>
+      </div>
+    </div>`).join('') : '<div class="empty">Keine offenen Vorschläge.</div>';
+  $('#questionsWrap').innerHTML = S.questions.length ? `<h3>Rückfragen von Claude</h3><ul class="small">${S.questions.map(q => `<li>${esc(q)}</li>`).join('')}</ul><p class="small muted">Antworten einfach als Notiz in den Eingang schreiben und neu analysieren.</p>` : '';
+}
+function accept(id, open = false) {
+  const c = S.cards.find(x => x.id === id); if (!c) return;
+  c.status = 'accepted'; learn(c, 'accept'); save('cards'); renderAll();
+  if (open) { S.current = id; showTab('karten'); renderEditor(); }
+}
+function reject(id) {
+  const c = S.cards.find(x => x.id === id); if (!c) return;
+  c.status = 'rejected'; learn(c, 'reject');
+  S.cards = S.cards.filter(x => x.id !== id); save('cards'); renderAll();
+}
+
+/* =========================================================
+   Karten-Vorschau
+   ========================================================= */
+function qrSVG(text, size) {
+  if (!window.qrcode || !text) return '';
+  try {
+    qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+    const q = qrcode(0, 'M'); q.addData(text); q.make();
+    const n = q.getModuleCount(); let d = '';
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c},${r}h1v1h-1z`;
+    return `<svg viewBox="-2 -2 ${n + 4} ${n + 4}" shape-rendering="crispEdges" aria-label="QR-Code"><rect x="-2" y="-2" width="${n + 4}" height="${n + 4}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+  } catch { return '<div class="lin">Inhalt zu lang für QR</div>'; }
+}
+function fieldHTML(f) { return `<div><div class="lbl">${esc(f.label)}</div><div class="val">${esc(f.value)}</div></div>`; }
+function passHTML(c, mini = false) {
+  const F = c.fields, initials = (c.logoText || c.organizationName || '?').trim().slice(0, 1).toUpperCase();
+  const prim = F.primaryFields || [];
+  let primHTML;
+  if (c.style === 'boardingPass' && prim.length >= 2) primHTML = `<div class="prim">${fieldHTML(prim[0])}<div class="arrow">${c.transitType === 'PKTransitTypeAir' ? '✈' : c.transitType === 'PKTransitTypeTrain' ? '🚆' : '→'}</div><div style="text-align:right">${fieldHTML(prim[1])}</div></div>`;
+  else if (c.style === 'storeCard' || c.style === 'coupon') primHTML = prim.length ? `<div class="strip">${prim.map(fieldHTML).join('')}</div>` : '';
+  else primHTML = prim.length ? `<div class="prim">${prim.slice(0, 1).map(fieldHTML).join('')}</div>` : '';
+  const row = a => a && a.length ? `<div class="fl">${a.slice(0, 4).map(fieldHTML).join('')}</div>` : '';
+  let code = '';
+  if (c.barcode && c.barcode.format !== 'none' && c.barcode.message) {
+    code = c.barcode.format === 'QR'
+      ? `<div class="code">${qrSVG(c.barcode.message)}${c.barcode.altText ? `<div class="alt">${esc(c.barcode.altText)}</div>` : ''}</div>`
+      : `<div class="code"><div class="lin">${esc(c.barcode.format)}<br>${esc(c.barcode.message.slice(0, 60))}</div>${c.barcode.altText ? `<div class="alt">${esc(c.barcode.altText)}</div>` : ''}</div>`;
+  }
+  return `<div class="pass ${esc(c.style)} ${mini ? 'mini' : ''}" style="--pbg:${esc(c.colors.bg)};--pfg:${esc(c.colors.fg)};--plabel:${esc(c.colors.lb)}">
+    <div class="head"><div class="logo"><i>${esc(initials)}</i><span>${esc(c.logoText)}</span></div><div class="hf">${(F.headerFields || []).slice(0, 2).map(fieldHTML).join('')}</div></div>
+    ${primHTML}${row(F.secondaryFields)}${row(F.auxiliaryFields)}${code}
+  </div>`;
+}
+function backHTML(c) {
+  const b = c.fields.backFields || [];
+  return b.length ? `<div class="back"><div class="small muted" style="margin-bottom:4px">Rückseite</div>${b.map(f => `<div class="bf"><b>${esc(f.label)}</b>${esc(f.value).replace(/\n/g, '<br>')}</div>`).join('')}</div>` : '';
+}
+
+/* =========================================================
+   Karten-Editor
+   ========================================================= */
+function renderCards() {
+  const cs = S.cards.filter(c => c.status !== 'proposed');
+  $('#bCards').textContent = cs.length;
+  $('#cardList').innerHTML = cs.length ? cs.map(c => `<div class="cardtile ${c.id === S.current ? 'sel' : ''}" data-open="${c.id}">${passHTML(c, true)}<div class="small muted" style="text-align:center;margin-top:4px">${esc(c.status === 'exported' ? 'exportiert' : c.status === 'draft' ? 'Entwurf' : 'übernommen')}${c.relevantDate ? ' · ' + esc(fmtDate(c.relevantDate, false)) : ''}</div></div>`).join('')
+    : '<div class="empty">Noch keine Karten. Vorschläge übernehmen oder neu anlegen.</div>';
+}
+function cur() { return S.cards.find(c => c.id === S.current); }
+function opts(obj, v) { return Object.entries(obj).map(([k, l]) => `<option value="${esc(k)}" ${k === v ? 'selected' : ''}>${esc(typeof l === 'string' ? l : l.label)}</option>`).join(''); }
+function renderEditor() {
+  const c = cur();
+  if (!c) { $('#editor').innerHTML = '<div class="empty">Wähle rechts eine Karte oder lege eine neue an.</div>'; $('#preview').innerHTML = ''; $('#exportBox').innerHTML = ''; renderCards(); return; }
+  const fieldsUI = SECTIONS.map(([s, l]) => `
+    <div class="sec"><div class="row" style="justify-content:space-between"><label style="margin:8px 0">${l}</label><button class="b s" data-addf="${s}">+ Feld</button></div>
+    ${(c.fields[s] || []).map((f, i) => `<div class="fieldrow"><input data-f="${s}.${i}.label" value="${esc(f.label)}" placeholder="Bezeichnung"><input data-f="${s}.${i}.value" value="${esc(f.value)}" placeholder="Wert"><button class="b s bad" data-delf="${s}.${i}" aria-label="Feld löschen">×</button></div>`).join('') || '<div class="small muted">–</div>'}</div>`).join('');
+  $('#editor').innerHTML = `
+    <div class="notice small">${esc(c.reason || 'Eigene Karte')}</div>
+    <div class="cols2">
+      <div><label>Kategorie</label><select data-k="category">${opts(CATS, c.category)}</select></div>
+      <div><label>Kartenstil</label><select data-k="style">${opts(STYLES, c.style)}</select></div>
+    </div>
+    <label>Beschreibung</label><input data-k="description" value="${esc(c.description)}">
+    <div class="cols2">
+      <div><label>Organisation</label><input data-k="organizationName" value="${esc(c.organizationName)}"></div>
+      <div><label>Logo-Text</label><input data-k="logoText" value="${esc(c.logoText)}"></div>
+    </div>
+    <div class="cols3">
+      <div><label>Hintergrund</label><input type="color" data-c="bg" value="${esc(c.colors.bg)}"></div>
+      <div><label>Text</label><input type="color" data-c="fg" value="${esc(c.colors.fg)}"></div>
+      <div><label>Bezeichnungen</label><input type="color" data-c="lb" value="${esc(c.colors.lb)}"></div>
+    </div>
+    ${c.style === 'boardingPass' ? `<label>Verkehrsmittel</label><select data-k="transitType">${opts(TRANSIT, c.transitType)}</select>` : ''}
+    ${fieldsUI}
+    <div class="sec">
+      <div class="cols2">
+        <div><label>Code-Format</label><select data-b="format">${opts({ QR: 'QR-Code', PDF417: 'PDF417', Aztec: 'Aztec', Code128: 'Code 128', none: 'kein Code' }, c.barcode.format)}</select></div>
+        <div><label>Text unter dem Code</label><input data-b="altText" value="${esc(c.barcode.altText)}"></div>
+      </div>
+      <label>Code-Inhalt (Nummer, Link, Text)</label><input data-b="message" value="${esc(c.barcode.message)}">
+    </div>
+    <div class="sec cols2">
+      <div><label>Erscheint ab (relevantes Datum)</label><input type="datetime-local" data-d="relevantDate" value="${toLocalInput(c.relevantDate)}"></div>
+      <div><label>Läuft ab</label><input type="datetime-local" data-d="expirationDate" value="${toLocalInput(c.expirationDate)}"></div>
+    </div>
+    <label>Ort (Hinweis auf dem Sperrbildschirm)</label><input data-k="locationText" value="${esc(c.locationText)}">
+    <div class="cols2"><div><label>Breitengrad</label><input data-k="lat" value="${esc(c.lat)}" inputmode="decimal"></div><div><label>Längengrad</label><input data-k="lon" value="${esc(c.lon)}" inputmode="decimal"></div></div>
+    <div class="row" style="margin-top:6px"><button class="b s" id="btnGeo">Aktuellen Standort einsetzen</button></div>
+    <div class="sec">
+      <label>Mit Claude verfeinern</label>
+      <div class="row"><input id="refineQ" placeholder="z. B. „Vereinsfarben Blau-Weiß, Mitgliedsnummer als Code128“" style="flex:1"><button class="b p" id="btnRefine">Verfeinern</button></div>
+    </div>
+    <div class="row" style="margin-top:14px"><button class="b bad s" id="btnDelCard">Karte löschen</button><button class="b s" id="btnDupCard">Duplizieren</button></div>`;
+  renderPreview(); renderCards();
+}
+function renderPreview() {
+  const c = cur(); if (!c) return;
+  $('#preview').innerHTML = passHTML(c) + backHTML(c);
+  const signed = canSign();
+  $('#exportBox').innerHTML = `
+    <div class="row">
+      <button class="b p" id="btnPkpass" ${signed ? '' : 'title="Zertifikat in den Einstellungen hinterlegen"'}>${signed ? 'Zu Apple Wallet (.pkpass)' : '.pkpass (Zertifikat fehlt)'}</button>
+      <button class="b" id="btnUnsigned">Paket unsigniert (.zip)</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="b s" id="btnQrPng">Code als Bild</button>
+      <button class="b s" id="btnCopyFields">Feldtexte kopieren</button>
+      <button class="b s" id="btnIcs">Kalendereintrag (.ics)</button>
+      <button class="b s" id="btnJson">pass.json</button>
+    </div>
+    <p class="small muted">Ohne Zertifikat: im iPhone-Wallet „+“ → „Pass erstellen“ wählen, den Code-Bild-Export scannen und die kopierten Feldtexte einsetzen.</p>`;
+}
+function editCard(fn, learnEdit = true) {
+  const c = cur(); if (!c) return; fn(c);
+  if (c.status === 'proposed') c.status = 'accepted';
+  c._dirty = learnEdit; save('cards'); renderPreview(); renderCards();
+}
+
+/* =========================================================
+   pkpass-Erzeugung & Signatur (lokal)
+   ========================================================= */
+function hexToRgb(h) { const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h || ''); return m ? `rgb(${parseInt(m[1], 16)}, ${parseInt(m[2], 16)}, ${parseInt(m[3], 16)})` : 'rgb(0, 0, 0)'; }
+function passJSON(c) {
+  const used = new Set();
+  const mapF = arr => (arr || []).filter(f => f.label || f.value).map((f, i) => {
+    let k = (f.key || f.label || 'f').toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'f';
+    while (used.has(k)) k += '_' + i; used.add(k);
+    return { key: k, label: f.label, value: f.value };
+  });
+  const st = { headerFields: mapF(c.fields.headerFields), primaryFields: mapF(c.fields.primaryFields), secondaryFields: mapF(c.fields.secondaryFields), auxiliaryFields: mapF(c.fields.auxiliaryFields), backFields: mapF(c.fields.backFields) };
+  if (c.style === 'boardingPass') st.transitType = c.transitType || 'PKTransitTypeGeneric';
+  const pj = {
+    formatVersion: 1,
+    passTypeIdentifier: S.settings.passTypeId || 'pass.example.werkbank',
+    teamIdentifier: S.settings.teamId || 'TEAMID0000',
+    serialNumber: c.serial || c.id,
+    organizationName: c.organizationName || c.logoText || 'Wallet-Werkbank',
+    description: c.description || 'Karte',
+    logoText: c.logoText || undefined,
+    foregroundColor: hexToRgb(c.colors.fg), backgroundColor: hexToRgb(c.colors.bg), labelColor: hexToRgb(c.colors.lb),
+    [c.style]: st
+  };
+  if (c.barcode.format !== 'none' && c.barcode.message) {
+    const b = { format: BARCODES[c.barcode.format], message: c.barcode.message, messageEncoding: 'iso-8859-1' };
+    if (c.barcode.altText) b.altText = c.barcode.altText;
+    pj.barcodes = [b];
+  }
+  if (c.relevantDate) pj.relevantDate = c.relevantDate;
+  if (c.expirationDate) pj.expirationDate = c.expirationDate;
+  const lat = parseFloat(c.lat), lon = parseFloat(c.lon);
+  if (!isNaN(lat) && !isNaN(lon)) pj.locations = [{ latitude: lat, longitude: lon, relevantText: c.locationText || c.description }];
+  return pj;
+}
+function iconPNG(c, w, h, scale) {
+  const cv = document.createElement('canvas'); cv.width = w * scale; cv.height = h * scale;
+  const x = cv.getContext('2d'); x.scale(scale, scale);
+  const letter = (c.logoText || c.organizationName || '?').trim().slice(0, 1).toUpperCase();
+  if (w === h) { x.fillStyle = c.colors.bg; x.fillRect(0, 0, w, h); x.fillStyle = c.colors.fg; x.font = `700 ${Math.round(h * .55)}px -apple-system,Helvetica,Arial`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(letter, w / 2, h / 2 + 1); }
+  else { x.clearRect(0, 0, w, h); x.fillStyle = 'rgba(255,255,255,.22)'; const r = 7, s = h - 10; x.beginPath(); x.roundRect ? x.roundRect(4, 5, s, s, r) : x.rect(4, 5, s, s); x.fill(); x.fillStyle = c.colors.fg; x.font = `800 ${Math.round(s * .55)}px -apple-system,Helvetica,Arial`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText(letter, 4 + s / 2, 5 + s / 2 + 1); }
+  const b64 = cv.toDataURL('image/png').split(',')[1];
+  return Uint8Array.from(atob(b64), ch => ch.charCodeAt(0));
+}
+const u8ToBin = u8 => { let s = ''; for (let i = 0; i < u8.length; i += 8192) s += String.fromCharCode.apply(null, u8.subarray(i, i + 8192)); return s; };
+const binToU8 = s => Uint8Array.from(s, ch => ch.charCodeAt(0) & 255);
+function passFiles(c) {
+  const enc = new TextEncoder();
+  return {
+    'pass.json': enc.encode(JSON.stringify(passJSON(c), null, 2)),
+    'icon.png': iconPNG(c, 29, 29, 1), 'icon@2x.png': iconPNG(c, 29, 29, 2), 'icon@3x.png': iconPNG(c, 29, 29, 3),
+    'logo.png': iconPNG(c, 50, 50, 1), 'logo@2x.png': iconPNG(c, 50, 50, 2)
+  };
+}
+function manifest(files) {
+  const m = {}; for (const [n, u8] of Object.entries(files)) { const md = forge.md.sha1.create(); md.update(u8ToBin(u8)); m[n] = md.digest().toHex(); }
+  return m;
+}
+function loadSigning() {
+  const p12b64 = S.session.p12 || S.settings.p12, wwdrB64 = S.session.wwdr || S.settings.wwdr, pass = S.session.p12Pass ?? '';
+  if (!p12b64 || !wwdrB64) throw new Error('Zertifikat oder WWDR fehlt.');
+  const p12 = forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(forge.util.decode64(p12b64)), pass);
+  const kb = (p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] || [])[0] || (p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag] || [])[0];
+  const cb = (p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] || []);
+  if (!kb || !cb.length) throw new Error('Im .p12 fehlen Schlüssel oder Zertifikat.');
+  const cert = cb.map(b => b.cert).find(x => x && !/Apple Worldwide/i.test(JSON.stringify(x.subject.attributes.map(a => a.value)))) || cb[0].cert;
+  const raw = forge.util.decode64(wwdrB64);
+  const wwdr = raw.includes('-----BEGIN') ? forge.pki.certificateFromPem(raw) : forge.pki.certificateFromAsn1(forge.asn1.fromDer(raw));
+  return { key: kb.key, cert, wwdr };
+}
+function certIds(cert) {
+  const get = (sn, oid) => { const a = cert.subject.attributes.find(x => x.shortName === sn || x.type === oid); return a ? a.value : ''; };
+  return { passTypeId: get('UID', '0.9.2342.19200300.100.1.1'), teamId: get('OU', '2.5.4.11'), cn: get('CN', '2.5.4.3'), validTo: cert.validity.notAfter };
+}
+function canSign() { return !!(window.forge && (S.session.p12 || S.settings.p12) && (S.session.wwdr || S.settings.wwdr) && S.settings.passTypeId && S.settings.teamId); }
+async function buildPkpass(c, sign) {
+  if (!window.JSZip || !window.forge) throw new Error('Bibliotheken nicht geladen – Internetverbindung prüfen.');
+  const files = passFiles(c);
+  const man = JSON.stringify(manifest(files));
+  const zip = new JSZip();
+  for (const [n, u8] of Object.entries(files)) zip.file(n, u8);
+  zip.file('manifest.json', man);
+  if (sign) {
+    const { key, cert, wwdr } = loadSigning();
+    const p7 = forge.pkcs7.createSignedData();
+    p7.content = forge.util.createBuffer(man, 'utf8');
+    p7.addCertificate(cert); p7.addCertificate(wwdr);
+    p7.addSigner({ key, certificate: cert, digestAlgorithm: forge.pki.oids.sha256,
+      authenticatedAttributes: [{ type: forge.pki.oids.contentType, value: forge.pki.oids.data }, { type: forge.pki.oids.messageDigest }, { type: forge.pki.oids.signingTime, value: new Date() }] });
+    p7.sign({ detached: true });
+    zip.file('signature', binToU8(forge.asn1.toDer(p7.toAsn1()).getBytes()));
+  }
+  return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: sign ? 'application/vnd.apple.pkpass' : 'application/zip' });
+}
+function download(blob, name) {
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+const safeName = s => (s || 'karte').replace(/[^\wäöüÄÖÜß-]+/g, '_').slice(0, 40);
+function markExported(c) { c.status = 'exported'; learn(c, 'export'); save('cards'); renderCards(); }
+
+function icsFor(c) {
+  const d = c.relevantDate ? new Date(c.relevantDate) : null; if (!d) throw new Error('Kein Datum an der Karte.');
+  const end = c.expirationDate ? new Date(Math.min(new Date(c.expirationDate).getTime(), d.getTime() + 864e5 * 1)) : new Date(d.getTime() + 36e5);
+  const f = x => x.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const e = s => String(s || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+  const desc = SECTIONS.flatMap(([s]) => c.fields[s] || []).map(x => `${x.label}: ${x.value}`).join('\n');
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Wallet-Werkbank//DE', 'BEGIN:VEVENT', 'UID:' + c.id + '@wallet-werkbank', 'DTSTAMP:' + f(new Date()), 'DTSTART:' + f(d), 'DTEND:' + f(end),
+    'SUMMARY:' + e(c.description), 'LOCATION:' + e(c.locationText), 'DESCRIPTION:' + e(desc), 'BEGIN:VALARM', 'TRIGGER:-PT1H', 'ACTION:DISPLAY', 'DESCRIPTION:' + e(c.description), 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+}
+function qrPNG(c) {
+  if (!window.qrcode) throw new Error('QR-Bibliothek nicht geladen.');
+  if (!c.barcode.message) throw new Error('Kein Code-Inhalt.');
+  qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+  const q = qrcode(0, 'M'); q.addData(c.barcode.message); q.make();
+  const n = q.getModuleCount(), s = 12, m = 4, cv = document.createElement('canvas'); cv.width = cv.height = (n + 2 * m) * s;
+  const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.fillStyle = '#000';
+  for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect((k + m) * s, (r + m) * s, s, s);
+  return new Promise(res => cv.toBlob(res, 'image/png'));
+}
+
+/* =========================================================
+   Claude: Karte verfeinern, Schnittstellen recherchieren
+   ========================================================= */
+function cardToAI(c) {
+  const f = a => (a || []).map(x => ({ key: x.key || '', label: x.label, value: x.value }));
+  return { category: c.category, style: c.style, description: c.description, organization: c.organizationName, logo_text: c.logoText, importance: c.importance, reason: c.reason, source_item_ids: c.sourceIds,
+    header_fields: f(c.fields.headerFields), primary_fields: f(c.fields.primaryFields), secondary_fields: f(c.fields.secondaryFields), auxiliary_fields: f(c.fields.auxiliaryFields), back_fields: f(c.fields.backFields),
+    barcode: { format: c.barcode.format, message: c.barcode.message, alt_text: c.barcode.altText }, colors: { background: c.colors.bg, foreground: c.colors.fg, label: c.colors.lb },
+    relevant_date: c.relevantDate, expiration_date: c.expirationDate, location_text: c.locationText, latitude: String(c.lat || ''), longitude: String(c.lon || ''), transit_type: c.transitType };
+}
+async function refine() {
+  const c = cur(); const q = ($('#refineQ').value || '').trim();
+  if (!c || !q) return toast('Bitte eine Anweisung eingeben.');
+  busy(true, 'Claude verfeinert die Karte …');
+  try {
+    const src = S.items.filter(i => (c.sourceIds || []).includes(i.id) && !i.data).map(i => `[${i.id}] ${i.title}\n${i.text || ''}`).join('\n\n');
+    const msg = await claude({ system: systemPrompt(), schema: REFINE_SCHEMA, maxTokens: 8000, messages: [{ role: 'user', content:
+      `LERNPROFIL\n${profileSummary()}\n\nQUELLEN DER KARTE\n${src || '–'}\n\nAKTUELLE KARTE (JSON)\n${JSON.stringify(cardToAI(c))}\n\nÄNDERUNGSWUNSCH\n${q}\n\nGib die vollständige geänderte Karte zurück.` }] });
+    const r = parseJSON(msg.text);
+    const nc = cardFromAI(r.card);
+    Object.assign(c, { category: nc.category, style: nc.style, description: nc.description, organizationName: nc.organizationName, logoText: nc.logoText, colors: nc.colors, fields: nc.fields, barcode: nc.barcode,
+      relevantDate: nc.relevantDate, expirationDate: nc.expirationDate, locationText: nc.locationText, lat: nc.lat, lon: nc.lon, transitType: nc.transitType, reason: r.change_summary || c.reason });
+    if (c.status === 'proposed') c.status = 'accepted';
+    learn(c, 'edit'); save('cards'); renderEditor(); toast('Karte angepasst');
+  } catch (e) { toast(e.message, 6000); }
+  finally { busy(false); }
+}
+function mdToHTML(md) {
+  const lines = esc(md).split('\n'); let out = '', inList = false;
+  const inline = s => s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>').replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  for (const l of lines) {
+    const h = l.match(/^(#{1,4})\s+(.*)/), li = l.match(/^\s*[-*]\s+(.*)/) || l.match(/^\s*\d+\.\s+(.*)/);
+    if (li) { if (!inList) { out += '<ul>'; inList = true; } out += `<li>${inline(li[1])}</li>`; continue; }
+    if (inList) { out += '</ul>'; inList = false; }
+    if (h) out += `<h3>${inline(h[2])}</h3>`; else if (l.trim()) out += `<p>${inline(l)}</p>`;
+  }
+  return out + (inList ? '</ul>' : '');
+}
+async function research(q) {
+  q = (q || $('#researchQ').value || '').trim(); if (!q) return toast('Bitte Anbieter oder Thema eingeben.');
+  showTab('schnittstellen'); $('#researchQ').value = q;
+  const tool = S.settings.model === 'claude-haiku-5-5' ? { type: 'web_search_20250305', name: 'web_search', max_uses: 6 } : { type: 'web_search_20260209', name: 'web_search', max_uses: 6 };
+  busy(true, 'Claude recherchiert im Web …'); $('#researchOut').innerHTML = '';
+  try {
+    const msg = await claude({ system: 'Du recherchierst technische Schnittstellen für eine persönliche Apple-Wallet-Werkbank, die im Browser läuft. Antworte auf Deutsch, knapp, als Markdown mit Überschriften und Listen. Nenne Quellen als Links.', maxTokens: 8000, tools: [tool], messages: [{ role: 'user', content:
+      `Thema/Anbieter: ${q}\n\nFinde heraus:\n1. Bietet der Anbieter selbst Apple-Wallet-Karten an (App, Mail, Website)?\n2. Offizielle APIs, Kalender-/ICS-Feeds, Webhooks, Exporte – mit Zugangsart (offen, API-Schlüssel, OAuth, nur Partner) und ob ein direkter Browserzugriff (CORS) möglich ist.\n3. Indirekte Wege (Bestätigungsmail mit schema.org-Daten, Kurzbefehle, Zapier/Make/n8n, Drittanbieter).\n4. Welche Kartendaten sich daraus gewinnen lassen (Nummer, Code, Termin, Ort).\n5. Empfehlung: der einfachste verlässliche Weg für eine Privatperson.` }] });
+    $('#researchOut').innerHTML = mdToHTML(msg.text || '(keine Antwort)');
+  } catch (e) { $('#researchOut').innerHTML = `<p class="tag-bad">${esc(e.message)}</p>`; }
+  finally { busy(false); }
+}
+
+/* =========================================================
+   Schnittstellen-Katalog
+   ========================================================= */
+const CATALOG = [
+  // Kalender
+  ['Kalender', 'ICS-Datei / ICS-Abo (webcal)', 'Termine aus iCloud (öffentlicher Kalender), Google, Outlook, Vereinen, Schulen, Ligen, Abfallkalendern', 'offen / Link', 'teils (CORS)', 'integriert'],
+  ['Kalender', 'Google Calendar API', 'Termine, Orte, Beschreibungen, Teilnehmer', 'OAuth 2.0', 'ja', 'integriert (Token)'],
+  ['Kalender', 'Microsoft Graph (Outlook/Exchange)', 'Termine aus Outlook / Microsoft 365', 'OAuth 2.0', 'ja', 'integriert (Token)'],
+  ['Kalender', 'CalDAV (iCloud, Nextcloud, Posteo, mailbox.org)', 'Vollzugriff auf Kalender', 'App-Passwort', 'nein', 'Server/Kurzbefehl nötig'],
+  ['Kalender', 'iPhone-Kurzbefehle', '„Kalenderereignisse suchen“ → Text an die Werkbank (#add=)', 'lokal', 'ja', 'integriert'],
+  ['Kalender', 'Calendly API', 'Gebuchte Termine mit Ort/Link', 'Token', 'ja', 'manuell (Mail/ICS)'],
+  // Mail & Dokumente
+  ['Mail', 'Bestätigungsmails (schema.org/JSON-LD)', 'EventReservation, FlightReservation, LodgingReservation mit Codes', 'Weiterleiten / einfügen', '–', 'integriert (Text/.eml)'],
+  ['Mail', 'Gmail API', 'Buchungs-, Ticket- und Mitgliedsmails durchsuchen', 'OAuth 2.0', 'ja', 'über Claude-App-Konnektor'],
+  ['Mail', 'IMAP', 'Postfach durchsuchen', 'Passwort', 'nein', 'Server nötig'],
+  ['Dokumente', 'Foto / Screenshot / PDF', 'Mitgliedskarten, Tickets, Ausweise – Claude liest Nummern und Codes', 'lokal', '–', 'integriert (Claude Vision)'],
+  ['Dokumente', 'Bestehende .pkpass-Dateien', 'Karten anderer Anbieter übernehmen und anpassen', 'lokal', '–', 'integriert'],
+  ['Kontakte', 'vCard (.vcf) / CardDAV', 'Vereine, Ärzte, Ansprechpartner für die Kartenrückseite', 'lokal / App-Passwort', 'vCard ja', 'vCard integriert'],
+  // Veranstaltungen & Reisen
+  ['Ereignisse', 'Eventbrite API', 'Gekaufte Tickets, Veranstaltungsdaten', 'OAuth', 'ja', 'Recherche'],
+  ['Ereignisse', 'Ticketmaster Discovery API', 'Veranstaltungsdaten, Orte, Zeiten', 'API-Schlüssel', 'ja', 'Recherche'],
+  ['Ereignisse', 'Eventim / Reservix / Ticketcorner', 'Meist eigene Wallet-Tickets; sonst Bestätigungsmail', 'keine offene API', '–', 'Mail/PDF'],
+  ['Ereignisse', 'Meetup / Luma', 'Teilnahmen, Orte, Zeiten', 'OAuth / API-Schlüssel', 'teils', 'ICS-Abo'],
+  ['Reise', 'Deutsche Bahn (DB Navigator, DB API Marketplace)', 'Tickets direkt in Wallet; Fahrpläne/Stationen per API', 'API-Schlüssel', 'teils', 'Mail/PDF + Recherche'],
+  ['Reise', 'Fluggesellschaften (z. B. Lufthansa Open API)', 'Bordkarten, Fluginfos', 'API-Schlüssel', 'teils', 'Mail/PDF'],
+  ['Reise', 'TripIt API', 'Gesammelte Reisepläne', 'OAuth', 'nein', 'ICS-Abo von TripIt'],
+  ['Reise', 'Booking.com / Expedia / Trivago', 'Hotelbuchungen (Bestätigungsmail), Suche', 'Partner', '–', 'Mail'],
+  // Mitgliedschaften
+  ['Mitgliedschaft', 'Vereinsverwaltung (easyVerein, ClubDesk, Campai)', 'Mitgliedsnummer, Beitragsstatus, Vereinstermine', 'API-Schlüssel', 'teils', 'Recherche / ICS'],
+  ['Mitgliedschaft', 'Fitnessstudio-Software (z. B. Magicline)', 'Mitglieds-ID, Check-in-Code', 'nur Studio-Partner', 'nein', 'Foto der Karte'],
+  ['Mitgliedschaft', 'Bibliotheken, ADAC, Kundenkarten', 'Barcode-Nummer der Plastikkarte', '–', '–', 'Foto der Karte'],
+  // Erzeugen & Verteilen
+  ['Wallet', 'Apple PassKit (.pkpass)', 'Signierte Karten, direkt installierbar', 'Apple Developer (Pass Type ID)', 'ja', 'integriert (lokale Signatur)'],
+  ['Wallet', 'iPhone Wallet „Pass erstellen“', 'Eigene Karte direkt im Wallet; QR-Code scannen', 'keiner', '–', 'integriert (Code-Bild, Feldtexte)'],
+  ['Wallet', 'PassKit Web Service', 'Karten nachträglich aktualisieren (webServiceURL, Push über APNs)', 'eigener Server', 'nein', 'Server nötig'],
+  ['Wallet', 'Signierdienste (Passcreator, PassKit.io, Pass2U)', 'Signieren, Verteilen, Aktualisieren ohne eigenes Zertifikat', 'Konto / API-Schlüssel', 'teils', 'unsigniertes Paket'],
+  ['Wallet', 'Open-Source-Signierer (passkit-generator, Node)', 'Eigener kleiner Signierserver', 'Zertifikat', '–', 'unsigniertes Paket'],
+  ['Wallet', 'Google Wallet API', 'Gleiche Karten für Android', 'Google Cloud Service-Konto', 'nein', 'Recherche'],
+  // Automatisierung & KI
+  ['Automatisierung', 'n8n / Make / Zapier', 'Mails, Kalender, Formulare automatisch an die Werkbank oder einen Signierer', 'Konto', '–', 'Webhook → #add='],
+  ['KI', 'Claude API (Messages, Vision, Websuche)', 'Verbindungen erkennen, Karten entwerfen, Schnittstellen finden', 'API-Schlüssel', 'ja', 'integriert'],
+  ['KI', 'Claude-App mit Konnektoren', 'Google Kalender, Gmail, Calendly direkt in Claude auswerten und hier einfügen', 'Claude-Konto', '–', 'manuell']
+];
+function renderCatalog() {
+  const f = $('#catFilter').value, q = ($('#catSearch').value || '').toLowerCase();
+  const rows = CATALOG.filter(r => (!f || r[0] === f) && (!q || r.join(' ').toLowerCase().includes(q)));
+  const cls = s => /^integriert/.test(s) ? 'tag-ok' : /nötig/.test(s) ? 'tag-bad' : 'tag-warn';
+  $('#catTable').innerHTML = `<tr><th>Bereich</th><th>Schnittstelle</th><th>Liefert</th><th>Zugang</th><th>Browser</th><th>In der Werkbank</th><th></th></tr>` +
+    rows.map(r => `<tr><td>${esc(r[0])}</td><td><b>${esc(r[1])}</b></td><td>${esc(r[2])}</td><td>${esc(r[3])}</td><td>${esc(r[4])}</td><td class="${cls(r[5])}">${esc(r[5])}</td><td><button class="b s" data-research="${esc(r[1])}">Recherche</button></td></tr>`).join('');
+}
+
+/* =========================================================
+   Lernprofil-Ansicht
+   ========================================================= */
+function renderPrefs() {
+  const p = S.prefs;
+  $('#prefCats').innerHTML = Object.entries(p.cats).map(([k, c]) => { const r = Math.round(catRate(k) * 100);
+    return `<div style="margin:8px 0"><div class="row" style="justify-content:space-between"><span>${esc(CATS[k] ? CATS[k].label : k)}</span><span class="small muted">✓ ${c.acc} · ⇩ ${c.exp} · ✎ ${c.edit} · ✕ ${c.rej} · <b>${r} %</b></span></div><div class="bar"><i style="width:${r}%"></i></div></div>`; }).join('');
+  const ws = Object.entries(p.words).sort((a, b) => b[1] - a[1]);
+  $('#prefWords').innerHTML = ws.length ? ws.slice(0, 40).map(([w, v]) => `<span class="chip" style="${v < 0 ? 'opacity:.6;text-decoration:line-through' : ''}">${esc(w)} ${v > 0 ? '+' : ''}${Math.round(v * 10) / 10}</span>`).join('') : '<span class="small muted">Noch nichts gelernt.</span>';
+  const cols = Object.entries(p.colors);
+  $('#prefDesign').innerHTML = cols.length ? cols.map(([k, c]) => `<span class="chip"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${esc(c.bg)}"></span>${esc(CATS[k] ? CATS[k].label : k)}</span>`).join('') : '<span class="small muted">Farben werden beim Bearbeiten und Exportieren gelernt.</span>';
+  $('#rules').value = p.rules || '';
+  $('#ruleSuggest').innerHTML = S.ruleSuggestions.length ? `<h3>Regelvorschläge von Claude</h3>${S.ruleSuggestions.map((r, i) => `<div class="item"><div class="meta">${esc(r)}</div><button class="b s ok" data-rule="${i}">Übernehmen</button></div>`).join('')}` : '';
+  const lbl = { accept: 'übernommen', reject: 'verworfen', export: 'exportiert', edit: 'bearbeitet' };
+  $('#history').innerHTML = p.history.length ? p.history.slice(0, 25).map(h => `<div class="row"><span class="muted">${esc(fmtDate(h.t))}</span><b>${esc(lbl[h.action] || h.action)}</b><span>${esc(h.title)}</span></div>`).join('') : '<span class="muted">Noch keine Entscheidungen.</span>';
+}
+
+/* =========================================================
+   Einstellungen
+   ========================================================= */
+function renderSettings() {
+  const s = S.settings;
+  $('#apiKey').value = getKey(); $('#rememberKey').checked = s.rememberKey; $('#model').value = s.model; $('#effort').value = s.effort; $('#fallbacks').checked = s.fallbacks;
+  $('#userName').value = s.userName; $('#days').value = s.days; $('#proxy').value = s.proxy; $('#theme').value = s.theme;
+  $('#passTypeId').value = s.passTypeId; $('#teamId').value = s.teamId; $('#rememberCert').checked = s.rememberCert;
+  $('#lblDays').textContent = s.days;
+  const on = !!getKey(); $('#aiDot').classList.toggle('on', on);
+  $('#aiStatus').textContent = on ? 'Claude verbunden · ' + s.model.replace('claude-', '') : 'KI nicht verbunden (lokale Regeln)';
+  document.documentElement.dataset.theme = s.theme || '';
+  if (!s.theme) delete document.documentElement.dataset.theme;
+  const certLoaded = (S.session.p12 || s.p12) && (S.session.wwdr || s.wwdr);
+  $('#certOut').innerHTML = certLoaded ? '<span class="tag-ok">Zertifikate geladen.</span>' + (s.rememberCert ? '' : ' <span class="muted">(nur bis zum Neuladen)</span>') : '<span class="muted">Kein Zertifikat hinterlegt.</span>';
+  $('#hashExample').textContent = location.href.split('#')[0] + '#add=' + encodeURIComponent('Zahnarzt Dr. Weber, 12.11.2026 09:30, Hauptstr. 5');
+}
+const readB64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
+
+/* =========================================================
+   Navigation & Rendering
+   ========================================================= */
+function showTab(t) {
+  $$('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  const ab = $(`#tabs button[data-tab="${t}"]`); if (ab && ab.scrollIntoView) ab.scrollIntoView({ block: 'nearest', inline: 'center' });
+  $$('section.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + t));
+  if (t === 'lernen') renderPrefs();
+  window.scrollTo({ top: 0 });
+}
+function renderAll() { renderItems(); renderConnections(); renderProposals(); renderCards(); if (S.current) renderEditor(); renderPrefs(); }
+
+/* =========================================================
+   Ereignisse
+   ========================================================= */
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) showTab(b.dataset.tab); });
+
+$('#btnAddText').onclick = () => {
+  const text = $('#inText').value.trim(), title = $('#inTitle').value.trim();
+  if (!text && !title) return toast('Bitte Text eingeben.');
+  addItem({ kind: 'text', title: title || text.split('\n')[0].slice(0, 70), text, source: 'Eingabe' });
+  $('#inText').value = ''; $('#inTitle').value = '';
+};
+$('#btnPaste').onclick = async () => {
+  try { const t = await navigator.clipboard.readText(); if (!t) return toast('Zwischenablage ist leer.'); $('#inText').value = t; }
+  catch { toast('Kein Zugriff auf die Zwischenablage – bitte manuell einfügen.'); }
+};
+$('#btnDemo').onclick = () => {
+  const d = (days, h, m) => { const x = new Date(); x.setDate(x.getDate() + days); x.setHours(h, m, 0, 0); return isoOffset(x); };
+  [
+    { kind: 'termin', title: 'Konzert: Hamburger Symphoniker', start: d(12, 20, 0), end: d(12, 22, 30), location: 'Laeiszhalle, Johannes-Brahms-Platz, 20355 Hamburg', text: 'Tickets: Block B, Reihe 7, Plätze 12–13. Ticketnummer: EV-4482-1193', source: 'Beispiel' },
+    { kind: 'text', title: 'Bahnbuchung Hamburg', text: `Ihre Buchung – Auftragsnummer: Q7XK2P\nHinfahrt: ${fmtDate(d(12, 14, 6))} ab Köln Hbf, an Hamburg Hbf 18:02, ICE 1012, Wagen 9, Platz 85\nRückfahrt: ${fmtDate(d(13, 11, 46))} ab Hamburg Hbf`, source: 'Beispiel' },
+    { kind: 'text', title: 'Hotel Hamburg', text: `Reservierungsnummer 558821, Hotel am Holstenwall, Holstenwall 19, Hamburg. Anreise ${fmtDate(d(12, 15, 0), false)}, Abreise ${fmtDate(d(13, 11, 0), false)}.`, source: 'Beispiel' },
+    { kind: 'kontakt', title: 'TSV Rodenkirchen e. V.', text: 'Mitgliedsnummer: TSV-20419\nAbteilung Tennis\nGeschäftsstelle: 0221 123456\nMitgliedschaft gültig bis 31.12.2026', source: 'Beispiel' },
+    { kind: 'termin', title: 'Tennis-Vereinsmeisterschaft', start: d(20, 10, 0), location: 'Tennisanlage TSV Rodenkirchen', text: 'Meldeschluss eine Woche vorher, Mitgliedsausweis mitbringen.', source: 'Beispiel' },
+    { kind: 'termin', title: 'Zahnarzt Dr. Weber – Kontrolle', start: d(5, 9, 30), location: 'Hauptstraße 5, 50996 Köln', text: 'Versichertenkarte mitbringen. Praxis-Tel. 0221 998877', source: 'Beispiel' }
+  ].reverse().forEach(addItem);
+  toast('Beispieldaten geladen');
+};
+const drop = $('#drop');
+drop.onclick = () => $('#fileIn').click();
+$('#fileIn').onchange = e => { handleFiles(Array.from(e.target.files)); e.target.value = ''; };
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => handleFiles(Array.from(e.dataTransfer.files)));
+
+$('#btnIcsUrl').onclick = async () => {
+  let u = $('#icsUrl').value.trim(); if (!u) return;
+  u = u.replace(/^webcal:\/\//i, 'https://');
+  const tryFetch = async url => { const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); };
+  try { addEvents(parseICS(await tryFetch(u)), 'ICS-Abo'); }
+  catch (e) {
+    if (S.settings.proxy) { try { addEvents(parseICS(await tryFetch(S.settings.proxy + encodeURIComponent(u))), 'ICS-Abo (Proxy)'); return; } catch (e2) { return toast('Auch über Proxy fehlgeschlagen: ' + e2.message, 5000); } }
+    toast('Laden blockiert (CORS). Datei herunterladen und hier ablegen oder Proxy einstellen.', 6000);
+  }
+};
+
+$('#itemList').addEventListener('click', e => {
+  const t = e.target;
+  if (t.dataset.sel) { t.checked ? S.sel.add(t.dataset.sel) : S.sel.delete(t.dataset.sel); renderItems(); }
+  if (t.dataset.del) { S.items = S.items.filter(i => i.id !== t.dataset.del); S.sel.delete(t.dataset.del); save('items'); renderItems(); }
+  if (t.dataset.quick) {
+    const it = S.items.find(i => i.id === t.dataset.quick); if (!it) return;
+    const c = localRules([it]).cards[0];
+    c.status = 'accepted'; c.reason = 'Direkt aus „' + it.title + '“ erstellt'; S.cards.unshift(c);
+    learn(c, 'accept'); save('cards'); S.current = c.id; renderAll(); showTab('karten'); renderEditor();
+  }
+});
+$('#btnSelAll').onclick = () => { S.sel = S.sel.size === S.items.length ? new Set() : new Set(S.items.map(i => i.id)); renderItems(); };
+$('#btnDelSel').onclick = () => { if (!S.sel.size) return toast('Nichts gewählt.'); if (!confirm(`${S.sel.size} Einträge löschen?`)) return; S.items = S.items.filter(i => !S.sel.has(i.id)); S.sel.clear(); save('items'); renderItems(); };
+$('#btnAnalyze').onclick = analyzeAI;
+$('#btnLocal').onclick = analyzeLocal;
+
+$('#propList').addEventListener('click', e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.accept) accept(t.dataset.accept);
+  if (t.dataset.edit) accept(t.dataset.edit, true);
+  if (t.dataset.reject) reject(t.dataset.reject);
+});
+$('#btnAcceptTop').onclick = () => { const ps = S.cards.filter(c => c.status === 'proposed' && relevance(c) >= 70); ps.forEach(c => { c.status = 'accepted'; learn(c, 'accept'); }); save('cards'); renderAll(); toast(`${ps.length} übernommen`); };
+$('#btnClearProps').onclick = () => { S.cards = S.cards.filter(c => c.status !== 'proposed'); save('cards'); renderAll(); };
+document.addEventListener('click', e => { const b = e.target.closest('[data-research]'); if (b) research(b.dataset.research); });
+
+$('#cardList').addEventListener('click', e => { const t = e.target.closest('[data-open]'); if (!t) return; finishEdit(); S.current = t.dataset.open; renderEditor(); if (innerWidth < 900) $('#editor').scrollIntoView({ behavior: 'smooth' }); });
+$('#btnNewCard').onclick = () => { finishEdit(); const c = newCard('sonstiges', { status: 'draft', description: 'Neue Karte', logoText: 'Neue Karte' }); c.fields.primaryFields.push({ key: 'titel', label: 'Titel', value: 'Neue Karte' }); S.cards.unshift(c); S.current = c.id; save('cards'); renderEditor(); };
+function finishEdit() { const c = cur(); if (c && c._dirty) { delete c._dirty; learn(c, 'edit'); save('cards'); } }
+
+const ed = $('#editor');
+ed.addEventListener('input', e => {
+  const t = e.target, d = t.dataset;
+  if (d.k) editCard(c => { c[d.k] = t.value; if (d.k === 'category' && CATS[t.value]) c.style = CATS[t.value].style; });
+  else if (d.c) editCard(c => c.colors[d.c] = t.value);
+  else if (d.b) editCard(c => c.barcode[d.b] = t.value);
+  else if (d.d) editCard(c => c[d.d] = fromLocalInput(t.value));
+  else if (d.f) { const [s, i, k] = d.f.split('.'); editCard(c => c.fields[s][+i][k] = t.value); }
+});
+ed.addEventListener('change', e => { const d = e.target.dataset; if (d.k === 'style' || d.k === 'category' || d.b === 'format') renderEditor(); });
+ed.addEventListener('click', async e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.addf) { editCard(c => c.fields[t.dataset.addf].push({ key: '', label: '', value: '' })); renderEditor(); }
+  else if (t.dataset.delf) { const [s, i] = t.dataset.delf.split('.'); editCard(c => c.fields[s].splice(+i, 1)); renderEditor(); }
+  else if (t.id === 'btnRefine') refine();
+  else if (t.id === 'btnDelCard') { if (!confirm('Karte löschen?')) return; S.cards = S.cards.filter(c => c.id !== S.current); S.current = null; save('cards'); renderEditor(); }
+  else if (t.id === 'btnDupCard') { const c = JSON.parse(JSON.stringify(cur())); c.id = uid(); c.serial = uid(); c.status = 'draft'; c.description += ' (Kopie)'; S.cards.unshift(c); S.current = c.id; save('cards'); renderEditor(); }
+  else if (t.id === 'btnGeo') {
+    if (!navigator.geolocation) return toast('Standort nicht verfügbar.');
+    navigator.geolocation.getCurrentPosition(p => { editCard(c => { c.lat = p.coords.latitude.toFixed(6); c.lon = p.coords.longitude.toFixed(6); }); renderEditor(); }, err => toast('Standort: ' + err.message));
+  }
+});
+$('#exportBox').addEventListener('click', async e => {
+  const t = e.target.closest('button'); const c = cur(); if (!t || !c) return;
+  finishEdit();
+  try {
+    if (t.id === 'btnPkpass') {
+      if (!canSign()) { showTab('einstellungen'); return toast('Bitte Zertifikat, WWDR, Pass Type ID und Team ID hinterlegen.', 4500); }
+      download(await buildPkpass(c, true), safeName(c.description) + '.pkpass'); markExported(c); toast('Karte erstellt – auf dem iPhone öffnen, um sie zum Wallet hinzuzufügen.', 4500);
+    } else if (t.id === 'btnUnsigned') { download(await buildPkpass(c, false), safeName(c.description) + '_unsigniert.zip'); markExported(c); }
+    else if (t.id === 'btnQrPng') { download(await qrPNG(c), safeName(c.description) + '_code.png'); }
+    else if (t.id === 'btnCopyFields') {
+      const txt = [c.description, c.organizationName && 'Organisation: ' + c.organizationName, ...SECTIONS.flatMap(([s]) => (c.fields[s] || []).map(f => `${f.label}: ${f.value}`)), c.barcode.message && 'Code: ' + c.barcode.message].filter(Boolean).join('\n');
+      await navigator.clipboard.writeText(txt); toast('Feldtexte kopiert'); markExported(c);
+    } else if (t.id === 'btnIcs') download(new Blob([icsFor(c)], { type: 'text/calendar' }), safeName(c.description) + '.ics');
+    else if (t.id === 'btnJson') download(new Blob([JSON.stringify(passJSON(c), null, 2)], { type: 'application/json' }), 'pass.json');
+  } catch (err) { toast(err.message, 6000); }
+});
+
+$('#btnSaveRules').onclick = () => { S.prefs.rules = $('#rules').value; save('prefs'); toast('Regeln gespeichert'); };
+$('#ruleSuggest').addEventListener('click', e => { const i = e.target.dataset.rule; if (i === undefined) return; S.prefs.rules = (S.prefs.rules ? S.prefs.rules.trim() + '\n' : '') + '- ' + S.ruleSuggestions[+i]; S.ruleSuggestions.splice(+i, 1); save('prefs', 'ruleSuggestions'); renderPrefs(); });
+$('#btnResetPrefs').onclick = () => { if (!confirm('Lernprofil wirklich zurücksetzen?')) return; S.prefs = defaultPrefs(); save('prefs'); renderPrefs(); };
+
+$('#catFilter').innerHTML = '<option value="">Alle Bereiche</option>' + Array.from(new Set(CATALOG.map(r => r[0]))).map(c => `<option>${esc(c)}</option>`).join('');
+$('#catFilter').onchange = renderCatalog; $('#catSearch').oninput = renderCatalog;
+$('#btnResearch').onclick = () => research();
+
+$('#btnGoogle').onclick = async () => {
+  const tok = $('#gToken').value.trim(); if (!tok) return toast('Token fehlt.');
+  const min = new Date().toISOString(), max = new Date(Date.now() + S.settings.days * 864e5).toISOString();
+  try {
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent($('#gCal').value.trim() || 'primary')}/events?timeMin=${min}&timeMax=${max}&singleEvents=true&orderBy=startTime&maxResults=250`, { headers: { Authorization: 'Bearer ' + tok } });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error ? j.error.message : 'HTTP ' + r.status);
+    addEvents((j.items || []).map(ev => ({ title: ev.summary, start: ev.start && (ev.start.dateTime || ev.start.date), end: ev.end && (ev.end.dateTime || ev.end.date), location: ev.location, text: [ev.description, ev.hangoutLink, ev.htmlLink].filter(Boolean).join('\n') })), 'Google Kalender');
+    showTab('eingang');
+  } catch (e) { toast('Google: ' + e.message, 5000); }
+};
+$('#btnGraph').onclick = async () => {
+  const tok = $('#msToken').value.trim(); if (!tok) return toast('Token fehlt.');
+  const min = new Date().toISOString(), max = new Date(Date.now() + S.settings.days * 864e5).toISOString();
+  try {
+    const r = await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${min}&endDateTime=${max}&$top=250&$orderby=start/dateTime`, { headers: { Authorization: 'Bearer ' + tok, Prefer: 'outlook.timezone="UTC"' } });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error ? j.error.message : 'HTTP ' + r.status);
+    const z = s => s ? new Date(s.replace(/(\.\d+)?$/, '') + 'Z').toISOString() : '';
+    addEvents((j.value || []).map(ev => ({ title: ev.subject, start: z(ev.start && ev.start.dateTime), end: z(ev.end && ev.end.dateTime), location: ev.location && ev.location.displayName, text: [ev.bodyPreview, ev.onlineMeeting && ev.onlineMeeting.joinUrl].filter(Boolean).join('\n') })), 'Outlook');
+    showTab('eingang');
+  } catch (e) { toast('Outlook: ' + e.message, 5000); }
+};
+
+$('#btnSaveAI').onclick = () => {
+  const s = S.settings, k = $('#apiKey').value.trim();
+  s.rememberKey = $('#rememberKey').checked; S.session.apiKey = k; s.apiKey = s.rememberKey ? k : '';
+  s.model = $('#model').value; s.effort = $('#effort').value; s.fallbacks = $('#fallbacks').checked; s.userName = $('#userName').value.trim();
+  save('settings'); renderSettings(); toast('Gespeichert');
+};
+$('#btnTestAI').onclick = async () => {
+  $('#btnSaveAI').click(); busy(true, 'Teste Verbindung …'); $('#aiTestOut').textContent = '';
+  try { const m = await claude({ system: 'Antworte mit genau einem kurzen deutschen Satz.', maxTokens: 2000, messages: [{ role: 'user', content: 'Bestätige, dass die Wallet-Werkbank verbunden ist.' }] });
+    $('#aiTestOut').innerHTML = `<span class="tag-ok">OK</span> · ${esc(m.model)} · ${esc(m.text)}`; }
+  catch (e) { $('#aiTestOut').innerHTML = `<span class="tag-bad">${esc(e.message)}</span>`; }
+  finally { busy(false); }
+};
+$('#btnSaveCert').onclick = async () => {
+  const s = S.settings;
+  try {
+    if ($('#p12File').files[0]) S.session.p12 = await readB64($('#p12File').files[0]);
+    if ($('#wwdrFile').files[0]) S.session.wwdr = await readB64($('#wwdrFile').files[0]);
+    S.session.p12Pass = $('#p12Pass').value;
+    s.rememberCert = $('#rememberCert').checked;
+    s.p12 = s.rememberCert ? (S.session.p12 || s.p12) : ''; s.wwdr = s.rememberCert ? (S.session.wwdr || s.wwdr) : '';
+    if (!window.forge) throw new Error('forge nicht geladen.');
+    if ((S.session.p12 || s.p12) && (S.session.wwdr || s.wwdr)) {
+      const { cert } = loadSigning(); const ids = certIds(cert);
+      if (ids.passTypeId && !$('#passTypeId').value) $('#passTypeId').value = ids.passTypeId;
+      if (ids.teamId && !$('#teamId').value) $('#teamId').value = ids.teamId;
+      s.passTypeId = $('#passTypeId').value.trim(); s.teamId = $('#teamId').value.trim();
+      save('settings'); renderSettings();
+      $('#certOut').innerHTML = `<span class="tag-ok">Zertifikat gültig bis ${esc(fmtDate(ids.validTo, false))}</span> · ${esc(ids.cn)}` + (s.rememberCert ? '' : ' <span class="muted">(Passwort nur bis zum Neuladen)</span>');
+    } else { s.passTypeId = $('#passTypeId').value.trim(); s.teamId = $('#teamId').value.trim(); save('settings'); renderSettings(); }
+  } catch (e) { $('#certOut').innerHTML = `<span class="tag-bad">${esc(e.message)}</span>`; }
+};
+$('#btnSaveMisc').onclick = () => { const s = S.settings; s.days = clamp(parseInt($('#days').value, 10) || 90, 1, 730); s.proxy = $('#proxy').value.trim(); s.theme = $('#theme').value; save('settings'); renderSettings(); toast('Gespeichert'); };
+$('#btnBackup').onclick = () => {
+  const data = { version: 1, exported: new Date().toISOString(), items: S.items, cards: S.cards, connections: S.connections, hints: S.hints, prefs: S.prefs, settings: Object.assign({}, S.settings, { apiKey: '', p12: '', wwdr: '' }) };
+  download(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' }), 'wallet-werkbank-sicherung.json');
+};
+$('#btnRestore').onclick = () => $('#restoreFile').click();
+$('#restoreFile').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try { const d = JSON.parse(await f.text()); ['items', 'cards', 'connections', 'hints'].forEach(k => Array.isArray(d[k]) && (S[k] = d[k]));
+    if (d.prefs) S.prefs = Object.assign(defaultPrefs(), d.prefs);
+    if (d.settings) S.settings = Object.assign(S.settings, d.settings, { apiKey: S.settings.apiKey, p12: S.settings.p12, wwdr: S.settings.wwdr });
+    save(); renderAll(); renderSettings(); toast('Sicherung eingespielt'); }
+  catch (err) { toast('Sicherung ungültig: ' + err.message); }
+  e.target.value = '';
+};
+$('#btnWipe').onclick = () => { if (!confirm('Wirklich alle Einträge, Karten, Einstellungen und das Lernprofil löschen?')) return; Object.keys(localStorage).filter(k => k.startsWith('wk.')).forEach(k => localStorage.removeItem(k)); location.hash = ''; location.reload(); };
+window.addEventListener('beforeunload', finishEdit);
+
+/* Übergabe per URL (#add=…), z. B. aus einem iPhone-Kurzbefehl */
+function hashImport() {
+  const h = location.hash.slice(1); if (!h) return;
+  const p = new URLSearchParams(h); const t = p.get('add');
+  if (t) { addItem({ kind: 'text', title: p.get('title') || t.split('\n')[0].slice(0, 70), text: t, source: 'Kurzbefehl / Link' }); toast('Aus Link übernommen'); history.replaceState(null, '', location.pathname + location.search); }
+}
+
+/* Start */
+renderSettings(); renderCatalog(); renderAll(); hashImport();
+if (!window.JSZip || !window.forge || !window.qrcode) setTimeout(() => toast('Hinweis: Einige Bibliotheken fehlen (offline?). Export/QR eingeschränkt.', 5000), 600);
+</script>
+</body>
+</html>
