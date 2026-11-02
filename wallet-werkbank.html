@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/forge/1.3.1/forge.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
 :root{
   --bg:#f4f5f7; --panel:#ffffff; --panel2:#f8fafc; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
@@ -75,6 +76,10 @@ button:disabled{opacity:.5;cursor:default}
 .kind{flex:none;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:3px 6px;border-radius:6px;background:var(--chip);color:var(--muted)}
 .drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--muted);cursor:pointer}
 .drop.over{border-color:var(--accent);color:var(--accent)}
+.seg{display:flex;gap:4px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:4px;margin:4px 0 12px}
+.seg button{flex:1;border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:9px 6px;border-radius:9px;cursor:pointer}
+.seg button.active{background:var(--panel);color:var(--ink);box-shadow:var(--shadow)}
+#directPanel{margin-bottom:16px;border-color:var(--accent)}
 .empty{padding:24px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
 .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:99;max-width:92vw;box-shadow:0 8px 30px rgba(0,0,0,.25);opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.show{opacity:1}
@@ -158,6 +163,46 @@ svg.graph{width:100%;height:auto;max-height:420px}
 <main>
 <!-- ============ EINGANG ============ -->
 <section class="tab active" id="tab-eingang">
+  <div class="panel" id="directPanel">
+    <div class="row" style="justify-content:space-between"><h2>Direkt zur Karte</h2><span class="small" id="dStatus"></span></div>
+    <p class="sub">Mail, Kalendertermin oder Screenshot hinein, fertige Karte heraus. Buchungsdaten in Mails und Codes im Bild werden exakt übernommen, den Rest liest Claude.</p>
+    <div class="seg" role="tablist">
+      <button data-dm="mail" class="active" role="tab">Mail</button>
+      <button data-dm="termin" role="tab">Kalendertermin</button>
+      <button data-dm="shot" role="tab">Screenshot</button>
+    </div>
+    <div data-dpane="mail">
+      <textarea id="dMail" placeholder="Bestätigungsmail, Einladung oder Ticketmail hier einfügen – Text, HTML oder kompletter Quelltext"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="b p" id="btnDMail">Karte aus Mail erzeugen</button>
+        <button class="b" id="btnDEml">Mail-Datei (.eml) wählen</button>
+        <input type="file" id="dEml" hidden accept=".eml,message/rfc822,.txt,.html,.htm">
+      </div>
+      <p class="small muted">iPhone-Mail: Text markieren → Kopieren → hier einfügen. Mac-Mail: Mail auf den Schreibtisch ziehen ergibt eine .eml-Datei. Gmail: ⋮ → „Original anzeigen“ → „Original herunterladen“. Mit .eml-Dateien werden auch Anhänge (Tickets, PDFs, Kalendereinladungen, .pkpass) und die strukturierten Buchungsdaten gelesen.</p>
+    </div>
+    <div data-dpane="termin" hidden>
+      <label for="dtTitle">Termin</label><input id="dtTitle" placeholder="z. B. Zahnarzt Dr. Weber">
+      <div class="cols2">
+        <div><label for="dtStart">Beginn</label><input id="dtStart" type="datetime-local"></div>
+        <div><label for="dtEnd">Ende</label><input id="dtEnd" type="datetime-local"></div>
+      </div>
+      <label for="dtLoc">Ort / Adresse</label><input id="dtLoc" placeholder="Hauptstraße 5, 50996 Köln">
+      <label for="dtNote">Notiz (Nummern, Hinweise, Ansprechpartner)</label><textarea id="dtNote" style="min-height:70px"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="b p" id="btnDTermin">Karte aus Termin erzeugen</button>
+        <button class="b" id="btnDIcs">Kalenderdatei (.ics): je Termin eine Karte</button>
+        <input type="file" id="dIcs" hidden accept=".ics,text/calendar">
+      </div>
+      <p class="small muted">iPhone-Kalender: Termin öffnen → Teilen gibt es nicht direkt; nutze den Kurzbefehl (Schnittstellen) oder Google/Outlook mit dem Haken „direkt als Karten“.</p>
+    </div>
+    <div data-dpane="shot" hidden>
+      <div class="drop" id="dShotDrop">Screenshot oder Foto hierher ziehen, einfügen (⌘V / Strg+V) oder <u>auswählen</u><br><span class="small">Ticket, Mitgliedskarte, Buchungsseite, Bordkarte, Gutschein · auch PDF</span></div>
+      <input type="file" id="dShot" hidden accept="image/*,application/pdf">
+      <div class="row" style="margin-top:8px"><button class="b" id="btnDClip">Bild aus Zwischenablage einsetzen</button></div>
+      <div class="row" id="dShotPrev" style="margin-top:8px"></div>
+      <p class="small muted">QR-Codes im Bild werden direkt hier im Browser gelesen und exakt übernommen. Andere Codes (z. B. Strichcode) liest Claude als Nummer ab.</p>
+    </div>
+  </div>
   <div class="grid g2">
     <div class="panel">
       <h2>Informationen sammeln</h2>
@@ -275,12 +320,14 @@ svg.graph{width:100%;height:auto;max-height:420px}
           <h3>Google Kalender</h3>
           <label>OAuth-Zugriffstoken</label><input id="gToken" type="password" placeholder="ya29.…">
           <label>Kalender-ID</label><input id="gCal" value="primary">
+          <label class="row" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="gDirect"> direkt als Karten erzeugen</label>
           <button class="b" id="btnGoogle" style="margin-top:8px">Termine holen</button>
           <p class="small muted">Token z. B. über den Google OAuth Playground, Scope <code>calendar.readonly</code>.</p>
         </div>
         <div>
           <h3>Outlook / Microsoft 365</h3>
           <label>Graph-Zugriffstoken</label><input id="msToken" type="password" placeholder="eyJ0…">
+          <label class="row" style="font-weight:500;color:var(--ink)"><input type="checkbox" id="msDirect"> direkt als Karten erzeugen</label>
           <button class="b" id="btnGraph" style="margin-top:8px">Termine holen</button>
           <p class="small muted">Token z. B. aus dem Graph Explorer, Berechtigung <code>Calendars.Read</code>.</p>
         </div>
@@ -288,7 +335,7 @@ svg.graph{width:100%;height:auto;max-height:420px}
           <h3>iPhone-Kurzbefehl</h3>
           <p class="small">Wenn diese Datei unter einer Adresse erreichbar ist (iCloud Drive über einen Webserver, GitHub Pages, Netlify), kann ein Kurzbefehl Text direkt übergeben:</p>
           <code class="small" id="hashExample" style="word-break:break-all"></code>
-          <p class="small muted">Kurzbefehl: „Kalenderereignisse suchen“ → „Text“ mit Titel/Datum/Ort → „URL codieren“ → „URLs öffnen“ mit <code>…wallet-werkbank.html#add=</code> + Text.</p>
+          <p class="small muted">Kurzbefehl: „Kalenderereignisse suchen“ → „Text“ mit Titel/Datum/Ort → „URL codieren“ → „URLs öffnen“ mit <code>…wallet-werkbank.html#add=</code> + Text. Mit <code>&amp;direct=1</code> entsteht sofort die Karte; <code>#mail=</code> + Mailtext erzeugt die Karte aus einer Mail; <code>#shot</code> öffnet den Screenshot-Bereich (vorher im Kurzbefehl „In Zwischenablage kopieren“).</p>
         </div>
       </div>
     </div>
@@ -509,7 +556,7 @@ function profileSummary() {
 /* =========================================================
    Karten-Modell
    ========================================================= */
-function newCard(cat = 'sonstiges', patch = {}) {
+function newCard(cat = 'sonstiges', patch = {}, extra = {}) {
   const C = CATS[cat] || CATS.sonstiges, learned = S.prefs.colors[cat];
   return Object.assign({
     id: uid(), status: 'draft', category: cat, style: C.style, description: '', organizationName: '', logoText: '',
@@ -518,7 +565,7 @@ function newCard(cat = 'sonstiges', patch = {}) {
     barcode: { format: 'QR', message: '', altText: '' },
     relevantDate: '', expirationDate: '', locationText: '', lat: '', lon: '', transitType: 'PKTransitTypeGeneric',
     importance: 50, reason: '', sourceIds: [], serial: uid(), created: new Date().toISOString()
-  }, patch);
+  }, patch, extra);
 }
 function cardFromAI(c) {
   const cat = CATS[c.category] ? c.category : 'sonstiges';
@@ -604,15 +651,14 @@ function inRange(iso) {
   return t >= now && t <= until;
 }
 function addEvents(evs, source) {
-  let n = 0, skipped = 0;
+  let n = 0, skipped = 0; const added = [];
   for (const e of evs) {
     if (!inRange(e.start) && !e.rrule) { skipped++; continue; }
-    S.items.unshift({ id: uid(), kind: 'termin', title: e.title || 'Termin', start: e.start || '', end: e.end || '', location: e.location || '',
-      text: [e.text, e.url, e.rrule ? 'Wiederholung: ' + e.rrule : '', e.organizer ? 'Organisator: ' + e.organizer : ''].filter(Boolean).join('\n'), source, created: new Date().toISOString() });
-    n++;
+    const it = evToItem(e, source); S.items.unshift(it); added.push(it); n++;
   }
   save('items'); renderItems();
   toast(`${n} Termine übernommen` + (skipped ? `, ${skipped} außerhalb des Zeitraums übersprungen` : ''));
+  return added;
 }
 function parseVCF(text) {
   const cards = text.replace(/\r\n/g, '\n').replace(/\n[ \t]/g, '').split(/BEGIN:VCARD/i).slice(1);
@@ -666,11 +712,15 @@ async function handleFiles(files) {
         addItem({ kind: 'karte', title: pj.description || pj.organizationName || 'Wallet-Karte', text: JSON.stringify(pj).slice(0, 4000), source: f.name });
         renderCards(); toast('Karte importiert – im Tab „Karten“ bearbeitbar');
       } else if (f.type.startsWith('image/')) {
-        if (f.size > 5 * 1024 * 1024) { toast(`${f.name}: Bild über 5 MB – bitte verkleinern.`, 4500); continue; }
-        addItem({ kind: 'bild', title: f.name, text: 'Foto/Screenshot – Claude liest den Inhalt.', mime: f.type, data: await fileToDataURL(f), source: f.name });
+        const codes = await decodeCodes(f);
+        addItem({ kind: 'bild', title: f.name, text: 'Foto/Screenshot – Claude liest den Inhalt.' + (codes.length ? ' Erkannte Codes: ' + codes.map(c => c.format + ': ' + c.message).join(' | ') : ''), mime: 'image/jpeg', data: await downscale(f), source: f.name });
       } else if (f.type === 'application/pdf' || name.endsWith('.pdf')) {
         if (f.size > 20 * 1024 * 1024) { toast(`${f.name}: PDF über 20 MB.`, 4500); continue; }
         addItem({ kind: 'pdf', title: f.name, text: 'PDF – Claude liest den Inhalt.', mime: 'application/pdf', data: await fileToDataURL(f), source: f.name });
+      } else if (name.endsWith('.eml')) {
+        const m = parseMail(await f.text());
+        addItem({ kind: 'mail', title: m.subject || f.name, text: [m.from && 'Von: ' + m.from, m.date && 'Datum: ' + m.date, m.text].filter(Boolean).join('\n'), source: f.name });
+        if (m.events.length) addEvents(m.events, 'Einladung in ' + f.name);
       } else {
         const t = await f.text();
         addItem({ kind: 'text', title: f.name, text: t, source: f.name });
@@ -814,7 +864,7 @@ function itemPayload(items) {
   for (const it of items) {
     textPart += `\n--- Eintrag ${it.id} (${it.kind}) ---\nTitel: ${it.title}\n` +
       (it.start ? `Beginn: ${it.start}\n` : '') + (it.end ? `Ende: ${it.end}\n` : '') + (it.location ? `Ort: ${it.location}\n` : '') +
-      (it.source ? `Quelle: ${it.source}\n` : '') + (it.text && !it.data ? `Inhalt:\n${it.text}\n` : '');
+      (it.source ? `Quelle: ${it.source}\n` : '') + (it.text && (!it.data || /Erkannte Codes/.test(it.text)) ? `Inhalt:\n${it.text}\n` : '');
     if (it.data) {
       const [head, b64] = it.data.split(',');
       const mt = (head.match(/data:([^;]+)/) || [])[1] || it.mime;
@@ -922,6 +972,303 @@ function localRules(items) {
     if (common.length >= 2) conns.push({ label: 'Gemeinsames Thema: ' + common.slice(0, 3).join(', '), relation: 'gemeinsame Begriffe', item_ids: [items[a].id, items[b].id], insight: 'Ähnlicher Inhalt – evtl. in einer Karte bündeln.' });
   }
   return { cards, conns };
+}
+
+/* =========================================================
+   Direkt-Erzeugung: Mail, Kalendertermin, Screenshot → Karte
+   ========================================================= */
+/* --- Mail (MIME/.eml) --- */
+function decodeQP(s) { return s.replace(/=\r?\n/g, '').replace(/=([0-9A-F]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16))); }
+function binToText(bin, charset) {
+  try { return new TextDecoder((charset || 'utf-8').toLowerCase()).decode(binToU8(bin)); }
+  catch { return new TextDecoder('utf-8').decode(binToU8(bin)); }
+}
+function decodeWords(s) {
+  return String(s || '').replace(/\?=\s+=\?/g, '?==?').replace(/=\?([^?]+)\?([BQ])\?([^?]*)\?=/gi, (m, cs, enc, txt) => {
+    try { return binToText(enc.toUpperCase() === 'B' ? atob(txt) : decodeQP(txt.replace(/_/g, ' ')), cs); } catch { return txt; }
+  });
+}
+function parseHeaders(raw) {
+  const h = {};
+  raw.replace(/\n[ \t]+/g, ' ').split('\n').forEach(l => { const i = l.indexOf(':'); if (i > 0) { const k = l.slice(0, i).trim().toLowerCase(); if (!(k in h)) h[k] = l.slice(i + 1).trim(); } });
+  return h;
+}
+function headerParam(v, name) { const m = String(v || '').match(new RegExp('(?:^|;)\\s*' + name + '\\*?=\\s*(?:"([^"]*)"|([^;\\s]+))', 'i')); return m ? (m[1] ?? m[2]) : ''; }
+function parseMime(raw, out) {
+  raw = raw.replace(/\r\n/g, '\n');
+  const sep = raw.indexOf('\n\n');
+  const h = parseHeaders(sep < 0 ? raw : raw.slice(0, sep)), body = sep < 0 ? '' : raw.slice(sep + 2);
+  out = out || { headers: h, text: [], html: [], attachments: [] };
+  const type = (h['content-type'] || 'text/plain').split(';')[0].trim().toLowerCase();
+  if (type.startsWith('multipart/')) {
+    const b = headerParam(h['content-type'], 'boundary');
+    if (b) { const parts = body.split('--' + b); for (let i = 1; i < parts.length; i++) { if (parts[i].startsWith('--')) break; parseMime(parts[i].replace(/^\n/, ''), out); } }
+    return out;
+  }
+  if (type === 'message/rfc822') return parseMime(body, out);
+  const enc = (h['content-transfer-encoding'] || '').toLowerCase(), charset = headerParam(h['content-type'], 'charset') || 'utf-8';
+  let bin = null, text = null;
+  if (enc === 'base64') { try { bin = atob(body.replace(/\s+/g, '')); } catch { bin = ''; } }
+  else if (enc === 'quoted-printable') bin = decodeQP(body);
+  else text = body;
+  const asText = () => text !== null ? text : binToText(bin, charset);
+  const disp = (h['content-disposition'] || '').toLowerCase();
+  const name = decodeWords(headerParam(h['content-disposition'], 'filename') || headerParam(h['content-type'], 'name'));
+  if (type === 'text/plain' && !disp.startsWith('attachment')) out.text.push(asText());
+  else if (type === 'text/html' && !disp.startsWith('attachment')) out.html.push(asText());
+  else out.attachments.push({ type, name, bin: bin !== null ? bin : text, text: /^text\/|application\/ics/.test(type) ? asText() : '' });
+  return out;
+}
+function htmlToText(html) {
+  const d = new DOMParser().parseFromString(String(html).replace(/<(br|\/p|\/div|\/tr|\/h\d|\/li|\/table)\b[^>]*>/gi, '$&\n'), 'text/html');
+  d.querySelectorAll('script,style,head').forEach(e => e.remove());
+  return (d.body ? d.body.textContent : '').replace(/[ \t ]+/g, ' ').replace(/\n\s*\n\s*\n+/g, '\n\n').trim();
+}
+function extractJsonLd(html) {
+  const out = [];
+  for (const m of String(html).matchAll(/<script[^>]*type=["']?application\/ld\+json["']?[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try { out.push(JSON.parse(m[1].trim())); } catch {}
+  }
+  return out;
+}
+function parseMail(raw) {
+  const head = raw.slice(0, 3000);
+  const isMime = /^(received|return-path|from|subject|mime-version|delivered-to|date|message-id|to|x-[\w-]+):/im.test(head) && /\r?\n\r?\n/.test(raw);
+  if (!isMime) {
+    const isHtml = /<(html|body|div|table|p)\b/i.test(raw);
+    return { subject: '', from: '', date: '', text: isHtml ? htmlToText(raw) : raw.trim(), ld: isHtml || /ld\+json/.test(raw) ? extractJsonLd(raw) : [],
+      events: /BEGIN:VEVENT/.test(raw) ? parseICS(raw) : [], images: [], pdfs: [], passes: [] };
+  }
+  const m = parseMime(raw), h = m.headers;
+  const att = m.attachments;
+  return {
+    subject: decodeWords(h.subject), from: decodeWords(h.from), date: h.date || '',
+    text: (m.text.join('\n').trim() || m.html.map(htmlToText).join('\n')).trim(),
+    ld: m.html.flatMap(extractJsonLd),
+    events: att.filter(a => a.type === 'text/calendar' || a.type === 'application/ics' || /\.ics$/i.test(a.name)).flatMap(a => parseICS(a.text || binToText(a.bin))),
+    images: att.filter(a => a.type.startsWith('image/') && a.bin && a.bin.length > 1000).sort((a, b) => b.bin.length - a.bin.length).slice(0, 3),
+    pdfs: att.filter(a => a.type === 'application/pdf' || /\.pdf$/i.test(a.name)).slice(0, 2),
+    passes: att.filter(a => a.type === 'application/vnd.apple.pkpass' || /\.pkpass$/i.test(a.name))
+  };
+}
+
+/* --- schema.org-Buchungsdaten aus Bestätigungsmails --- */
+function ldFlatten(x) { if (!x || typeof x !== 'object') return []; if (Array.isArray(x)) return x.flatMap(ldFlatten); if (x['@graph']) return ldFlatten(x['@graph']); return [x]; }
+const ldType = o => [].concat(o['@type'] || []).join(' ');
+const ldName = o => !o ? '' : typeof o === 'string' ? o : (o.name || '');
+function addrText(a) {
+  if (!a) return ''; if (typeof a === 'string') return a;
+  return [a.streetAddress, [a.postalCode, a.addressLocality].filter(Boolean).join(' '), typeof a.addressCountry === 'string' ? a.addressCountry : a.addressCountry && a.addressCountry.name].filter(Boolean).join(', ');
+}
+function placeText(p) { if (!p) return ''; if (typeof p === 'string') return p; return [p.name, addrText(p.address)].filter(Boolean).join(', '); }
+function geoOf(p) { const g = p && (p.geo || (p.address && p.address.geo)); return g && g.latitude ? { lat: String(g.latitude), lon: String(g.longitude) } : { lat: '', lon: '' }; }
+function tokenToBarcode(tok) {
+  if (!tok) return { format: 'none', message: '', altText: '' };
+  const m = String(tok).match(/^(qrCode|aztecCode|barcode128|barcode39|pdf417|serial|url):(.*)$/i);
+  if (!m) return { format: 'QR', message: String(tok), altText: '' };
+  const fmt = { qrcode: 'QR', azteccode: 'Aztec', barcode128: 'Code128', barcode39: 'Code128', pdf417: 'PDF417', serial: 'none', url: 'QR' }[m[1].toLowerCase()];
+  return fmt === 'none' ? { format: 'none', message: '', altText: m[2] } : { format: fmt, message: m[2], altText: m[2].length <= 30 ? m[2] : '' };
+}
+const ldTime = t => { if (!t) return ''; const d = new Date(t); return isNaN(d) ? '' : isoOffset(d); };
+const hm = iso => { const d = new Date(iso); return iso && !isNaN(d) ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : ''; };
+const plusDay = iso => iso ? isoOffset(new Date(new Date(iso).getTime() + 864e5)) : '';
+function reservationToCard(r) {
+  const t = ldType(r), f = r.reservationFor || {}, num = r.reservationNumber || r.confirmationNumber || '';
+  const tick = [].concat(r.reservedTicket || [])[0] || {};
+  const seat = tick.ticketedSeat || (r.airplaneSeat ? { seatNumber: r.airplaneSeat } : {});
+  const who = ldName(r.underName);
+  const F = (key, label, value) => value ? { key, label, value: String(value) } : null;
+  const L = (...a) => a.filter(Boolean);
+  let c;
+  if (/Flight/.test(t)) {
+    const dep = f.departureAirport || {}, arr = f.arrivalAirport || {}, al = f.airline || {}, start = ldTime(f.departureTime);
+    const fl = (al.iataCode || '') + (f.flightNumber || '');
+    c = newCard('reise', { style: 'boardingPass', transitType: 'PKTransitTypeAir', description: `Flug ${fl} ${dep.iataCode || ldName(dep)} – ${arr.iataCode || ldName(arr)}`.replace(/\s+/g, ' '),
+      organizationName: ldName(al) || 'Flug', logoText: ldName(al) || 'Flug', relevantDate: start, expirationDate: plusDay(ldTime(f.arrivalTime) || start), locationText: placeText(dep) });
+    c.fields.headerFields = L(F('flug', 'Flug', fl));
+    c.fields.primaryFields = L(F('von', ldName(dep) || 'Von', dep.iataCode || ldName(dep)), F('nach', ldName(arr) || 'Nach', arr.iataCode || ldName(arr)));
+    c.fields.secondaryFields = L(F('datum', 'Datum', fmtDate(start, false)), F('abflug', 'Abflug', hm(start)), F('gruppe', 'Gruppe', r.boardingGroup));
+    c.fields.auxiliaryFields = L(F('sitz', 'Sitz', seat.seatNumber), F('ankunft', 'Ankunft', hm(ldTime(f.arrivalTime))), F('name', 'Passagier', who));
+  } else if (/Train|Bus/.test(t)) {
+    const bus = /Bus/.test(t), dep = f.departureStation || f.departureBusStop || {}, arr = f.arrivalStation || f.arrivalBusStop || {}, start = ldTime(f.departureTime);
+    const zug = [f.trainName || f.busName, f.trainNumber || f.busNumber].filter(Boolean).join(' ');
+    const prov = ldName(f.provider) || ldName(r.provider) || (bus ? 'Bus' : 'Bahn');
+    c = newCard('reise', { style: 'boardingPass', transitType: bus ? 'PKTransitTypeBus' : 'PKTransitTypeTrain', description: `${zug || (bus ? 'Bus' : 'Zug')} ${ldName(dep)} – ${ldName(arr)}`,
+      organizationName: prov, logoText: prov, relevantDate: start, expirationDate: plusDay(ldTime(f.arrivalTime) || start), locationText: placeText(dep) });
+    c.fields.headerFields = L(F('datum', 'Datum', fmtDate(start, false)));
+    c.fields.primaryFields = L(F('von', 'Ab ' + hm(start), ldName(dep)), F('nach', 'An ' + hm(ldTime(f.arrivalTime)), ldName(arr)));
+    c.fields.secondaryFields = L(F('zug', bus ? 'Bus' : 'Zug', zug), F('gleis', 'Gleis', f.departurePlatform));
+    c.fields.auxiliaryFields = L(F('wagen', 'Wagen', seat.seatSection), F('platz', 'Platz', seat.seatNumber), F('klasse', 'Klasse', seat.seatingType));
+  } else if (/Lodging/.test(t)) {
+    const start = ldTime(r.checkinTime || r.checkinDate);
+    c = newCard('reise', { style: 'generic', description: 'Hotel: ' + ldName(f), organizationName: ldName(f) || 'Hotel', logoText: ldName(f) || 'Hotel', relevantDate: start,
+      expirationDate: plusDay(ldTime(r.checkoutTime || r.checkoutDate)), locationText: placeText(f) }, geoOf(f));
+    c.fields.headerFields = L(F('anreise', 'Anreise', fmtDate(start, false)));
+    c.fields.primaryFields = L(F('hotel', 'Hotel', ldName(f)));
+    c.fields.secondaryFields = L(F('checkin', 'Check-in', hm(start)), F('abreise', 'Abreise', fmtDate(ldTime(r.checkoutTime || r.checkoutDate), false)));
+    c.fields.backFields = L(F('adresse', 'Adresse', addrText(f.address)), F('telefon', 'Telefon', f.telephone));
+  } else if (/FoodEstablishment/.test(t)) {
+    const start = ldTime(r.startTime);
+    c = newCard('termin', { style: 'eventTicket', description: 'Tisch: ' + ldName(f), organizationName: ldName(f) || 'Restaurant', logoText: ldName(f) || 'Restaurant', relevantDate: start, expirationDate: plusDay(start), locationText: placeText(f) }, geoOf(f));
+    c.fields.headerFields = L(F('datum', 'Datum', fmtDate(start, false)));
+    c.fields.primaryFields = L(F('ort', 'Restaurant', ldName(f)));
+    c.fields.secondaryFields = L(F('zeit', 'Uhrzeit', hm(start)), F('personen', 'Personen', r.partySize));
+    c.fields.backFields = L(F('adresse', 'Adresse', addrText(f.address)), F('telefon', 'Telefon', f.telephone));
+  } else if (/RentalCar/.test(t)) {
+    const start = ldTime(r.pickupTime);
+    c = newCard('reise', { style: 'generic', description: 'Mietwagen ' + (ldName(r.provider) || ldName(f.rentalCompany)), organizationName: ldName(r.provider) || ldName(f.rentalCompany) || 'Mietwagen', logoText: 'Mietwagen',
+      relevantDate: start, expirationDate: plusDay(ldTime(r.dropoffTime) || start), locationText: placeText(r.pickupLocation) }, geoOf(r.pickupLocation));
+    c.fields.headerFields = L(F('abholung', 'Abholung', fmtDate(start, false)));
+    c.fields.primaryFields = L(F('fahrzeug', 'Fahrzeug', ldName(f) || [f.brand && ldName(f.brand), f.model].filter(Boolean).join(' ') || 'Mietwagen'));
+    c.fields.secondaryFields = L(F('zeit', 'Uhrzeit', hm(start)), F('rueckgabe', 'Rückgabe', fmtDate(ldTime(r.dropoffTime))));
+    c.fields.backFields = L(F('abholort', 'Abholort', placeText(r.pickupLocation)), F('rueckgabeort', 'Rückgabeort', placeText(r.dropoffLocation)));
+  } else {
+    const ev = f, start = ldTime(ev.startDate || r.startTime), loc = ev.location || {};
+    const isEvent = /Event/.test(t) || ev.startDate;
+    c = newCard(isEvent ? 'ereignis' : 'sonstiges', { description: ldName(ev) || 'Reservierung', organizationName: ldName(ev.organizer) || ldName(r.provider) || ldName(ev) || 'Reservierung', logoText: (ldName(ev) || 'Reservierung').slice(0, 22),
+      relevantDate: start, expirationDate: plusDay(ldTime(ev.endDate) || start), locationText: placeText(loc) }, geoOf(loc));
+    c.fields.headerFields = L(F('datum', 'Datum', fmtDate(start, false)));
+    c.fields.primaryFields = L(F('event', 'Veranstaltung', ldName(ev)));
+    c.fields.secondaryFields = L(F('beginn', 'Beginn', hm(start)), F('ort', 'Ort', ldName(loc)));
+    c.fields.auxiliaryFields = L(F('block', 'Block', seat.seatSection), F('reihe', 'Reihe', seat.seatRow), F('platz', 'Platz', seat.seatNumber));
+    c.fields.backFields = L(F('adresse', 'Adresse', addrText(loc.address)));
+  }
+  c.barcode = tokenToBarcode(r.ticketToken || tick.ticketToken);
+  if (num) c.fields.auxiliaryFields.push({ key: 'buchung', label: 'Buchung', value: String(num) });
+  if (tick.ticketNumber) c.fields.backFields.push({ key: 'ticket', label: 'Ticketnummer', value: String(tick.ticketNumber) });
+  if (who) c.fields.backFields.push({ key: 'name', label: 'Name', value: who });
+  if (r.url || r.modifyReservationUrl) c.fields.backFields.push({ key: 'link', label: 'Buchung verwalten', value: r.modifyReservationUrl || r.url });
+  c.fields.auxiliaryFields = c.fields.auxiliaryFields.slice(0, 4);
+  c.importance = 85; c.reason = 'Exakt aus den Buchungsdaten der Mail (schema.org) übernommen';
+  return c;
+}
+
+/* --- Bilder: verkleinern und Codes lesen --- */
+async function loadBitmap(blob) {
+  try { return await createImageBitmap(blob); }
+  catch {
+    const url = URL.createObjectURL(blob);
+    try { return await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('Bild nicht lesbar')); im.src = url; }); }
+    finally { setTimeout(() => URL.revokeObjectURL(url), 5000); }
+  }
+}
+async function downscale(blob, max = 1600) {
+  const bmp = await loadBitmap(blob), w = bmp.width || bmp.naturalWidth, h = bmp.height || bmp.naturalHeight;
+  const s = Math.min(1, max / Math.max(w, h)), cv = document.createElement('canvas');
+  cv.width = Math.round(w * s); cv.height = Math.round(h * s);
+  const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.drawImage(bmp, 0, 0, cv.width, cv.height);
+  return cv.toDataURL('image/jpeg', 0.88);
+}
+async function decodeCodes(blob) {
+  const out = [];
+  let bmp; try { bmp = await loadBitmap(blob); } catch { return out; }
+  if ('BarcodeDetector' in window) {
+    try {
+      const map = { qr_code: 'QR', code_128: 'Code128', pdf417: 'PDF417', aztec: 'Aztec', code_39: 'Code128', ean_13: 'Code128', ean_8: 'Code128', itf: 'Code128' };
+      const fm = (await BarcodeDetector.getSupportedFormats()).filter(f => map[f]);
+      if (fm.length) (await new BarcodeDetector({ formats: fm }).detect(bmp)).forEach(b => out.push({ format: map[b.format], message: b.rawValue, source: b.format }));
+    } catch {}
+  }
+  if (!out.length && window.jsQR) {
+    const w = bmp.width || bmp.naturalWidth, h = bmp.height || bmp.naturalHeight, s = Math.min(1, 2000 / Math.max(w, h));
+    const cv = document.createElement('canvas'); cv.width = Math.round(w * s); cv.height = Math.round(h * s);
+    const x = cv.getContext('2d', { willReadFrequently: true }); x.drawImage(bmp, 0, 0, cv.width, cv.height);
+    const r = jsQR(x.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height);
+    if (r && r.data) out.push({ format: 'QR', message: r.data, source: 'qr_code' });
+  }
+  const seen = new Set(); return out.filter(c => c.message && !seen.has(c.message) && seen.add(c.message));
+}
+const b64ToBlob = (b64, type) => new Blob([Uint8Array.from(atob(b64), ch => ch.charCodeAt(0))], { type });
+
+/* --- Erzeugung --- */
+const DIRECT_SCHEMA = { type: 'object', additionalProperties: false, required: ['cards', 'note'], properties: { cards: { type: 'array', items: CARD_SCHEMA }, note: { type: 'string', description: 'Ein Satz zur Erzeugung, z. B. was unklar blieb' } } };
+function evToItem(e, source) {
+  return { id: uid(), kind: 'termin', title: e.title || 'Termin', start: e.start || '', end: e.end || '', location: e.location || '',
+    text: [e.text, e.url, e.rrule ? 'Wiederholung: ' + e.rrule : '', e.organizer ? 'Organisator: ' + e.organizer : ''].filter(Boolean).join('\n'), source, created: new Date().toISOString() };
+}
+function setDirectStatus(html) { $('#dStatus').innerHTML = html || ''; }
+async function generateDirect({ items, preset = [], codes = [], label = 'Quelle', many = false }) {
+  items.slice().reverse().forEach(i => { if (!S.items.some(x => x.id === i.id)) S.items.unshift(i); });
+  save('items'); renderItems();
+  let cards = preset.slice(), note = '';
+  if (preset.length) {
+    // Termine (z. B. Kalendereinladung im Anhang), die nicht schon durch die Buchungsdaten abgedeckt sind
+    const near = (a, b) => a && b && Math.abs(new Date(a) - new Date(b)) < 15 * 6e4;
+    const extra = items.filter(i => i.kind === 'termin' && !preset.some(c => near(c.relevantDate, i.start)));
+    if (extra.length) cards = cards.concat(localRules(extra).cards);
+  }
+  const facts = codes.map(c => `${c.format}-Code (aus dem Bild gelesen): ${c.message}`).join('\n');
+  if (!cards.length && getKey()) {
+    busy(true, 'Claude erstellt die Karte …'); setDirectStatus('<span class="spin" style="display:inline-block;vertical-align:middle"></span> Claude erstellt die Karte …');
+    try {
+      const { textPart, blocks } = itemPayload(items);
+      const content = [...blocks, { type: 'text', text:
+        `LERNPROFIL\n${profileSummary()}\n\n${facts ? 'MASCHINELL ERKANNTE CODES (Inhalt exakt als barcode.message übernehmen, Format beibehalten):\n' + facts + '\n\n' : ''}QUELLE: ${label}${textPart}\n\n` +
+        (many ? 'Erzeuge für jeden Termin eine fertige Wallet-Karte. Lass nur offensichtlich belanglose Einträge weg (z. B. Feiertage), sofern die Regeln nichts anderes sagen. Gib source_item_ids immer an.'
+              : 'Erzeuge daraus direkt die fertige Wallet-Karte. In der Regel genau eine Karte; mehrere nur bei klar getrennten Vorgängen (z. B. Hin- und Rückfahrt, mehrere Personen mit eigenem Ticket). Lies Bilder und PDFs genau: Nummern, Sitzplätze, Zeiten, Adressen.') }];
+      const msg = await claude({ system: systemPrompt(), messages: [{ role: 'user', content }], schema: DIRECT_SCHEMA, maxTokens: many ? 32000 : 12000 });
+      const r = parseJSON(msg.text); note = r.note || '';
+      cards = (r.cards || []).map(cardFromAI);
+    } catch (e) { toast('Claude: ' + e.message + ' – lokale Regeln verwendet.', 6000); }
+    finally { busy(false); }
+  }
+  if (!cards.length) {
+    cards = localRules(items.filter(i => !i.data || i.kind === 'termin')).cards;
+    if (!cards.length) cards = [newCard('sonstiges', { description: items[0].title, logoText: items[0].title.slice(0, 22), sourceIds: items.map(i => i.id) })];
+    if (!getKey()) note = 'Ohne API-Schlüssel nur lokale Regeln' + (codes.length ? ' – Code aus dem Bild übernommen, Texte bitte ergänzen.' : '.');
+  }
+  for (const c of cards) {
+    if (codes.length && (!c.barcode.message || c.barcode.format === 'none')) { const k = codes[0]; c.barcode = { format: k.format, message: k.message, altText: k.message.length <= 30 ? k.message : '' }; }
+    c.status = 'accepted';
+    if (!c.sourceIds || !c.sourceIds.length) c.sourceIds = items.map(i => i.id);
+    if (!c.reason) c.reason = 'Direkt aus ' + label + ' erzeugt';
+    learn(c, 'accept');
+  }
+  S.cards.unshift(...cards); S.current = cards[0].id; save('cards');
+  setDirectStatus(`<span class="tag-ok">${cards.length} Karte${cards.length === 1 ? '' : 'n'} erzeugt</span>${note ? ' · ' + esc(note) : ''}`);
+  renderAll(); showTab('karten'); renderEditor();
+  toast(`${cards.length} Karte${cards.length === 1 ? '' : 'n'} aus ${label} erzeugt`);
+  return cards;
+}
+async function directFromMail(raw, name) {
+  if (!raw || !raw.trim()) return toast('Bitte eine Mail einfügen oder eine .eml-Datei wählen.');
+  let m; try { m = parseMail(raw); } catch (e) { return toast('Mail nicht lesbar: ' + e.message, 5000); }
+  const firstLine = (m.text.split('\n').find(l => l.trim()) || 'Mail').trim();
+  const body = m.text.length > 60000 ? m.text.slice(0, 60000) : m.text;
+  if (body.length < m.text.length) toast('Sehr lange Mail: nur die ersten 60.000 Zeichen gehen an Claude.', 5000);
+  const mailItem = { id: uid(), kind: 'mail', title: (m.subject || firstLine).slice(0, 90), source: name || 'Mail', created: new Date().toISOString(),
+    text: [m.from && 'Von: ' + m.from, m.date && 'Datum: ' + m.date, m.subject && 'Betreff: ' + m.subject, body].filter(Boolean).join('\n') };
+  const items = [mailItem], codes = [];
+  m.events.forEach(e => items.push(evToItem(e, 'Kalendereinladung in Mail')));
+  for (const a of m.images) {
+    try { const blob = new Blob([binToU8(a.bin)], { type: a.type }); codes.push(...await decodeCodes(blob));
+      items.push({ id: uid(), kind: 'bild', title: a.name || 'Bild aus Mail', text: 'Bildanhang', mime: 'image/jpeg', data: await downscale(blob), source: 'Anhang', created: new Date().toISOString() }); } catch {}
+  }
+  for (const a of m.pdfs) if (a.bin.length < 20 * 1024 * 1024) items.push({ id: uid(), kind: 'pdf', title: a.name || 'PDF aus Mail', text: 'PDF-Anhang', mime: 'application/pdf', data: 'data:application/pdf;base64,' + btoa(a.bin), source: 'Anhang', created: new Date().toISOString() });
+  const preset = ldFlatten(m.ld).filter(o => /Reservation/.test(ldType(o))).map(reservationToCard);
+  for (const a of m.passes) { try { preset.push(Object.assign(cardFromPassJson(await readPkpass(binToU8(a.bin))), { reason: 'Wallet-Karte aus dem Mail-Anhang' })); } catch {} }
+  return generateDirect({ items, preset, codes, label: 'Mail' });
+}
+async function directFromImage(file) {
+  if (!file) return;
+  try {
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')) {
+      if (file.size > 20 * 1024 * 1024) return toast('PDF über 20 MB.');
+      $('#dShotPrev').innerHTML = `<span class="chip">PDF: ${esc(file.name)}</span>`;
+      return generateDirect({ items: [{ id: uid(), kind: 'pdf', title: file.name || 'PDF', text: 'PDF', mime: 'application/pdf', data: await fileToDataURL(file), source: 'Screenshot/PDF', created: new Date().toISOString() }], label: 'PDF' });
+    }
+    setDirectStatus('Lese Bild und suche Codes …');
+    const [codes, data] = await Promise.all([decodeCodes(file), downscale(file)]);
+    $('#dShotPrev').innerHTML = `<img src="${data}" alt="" style="max-height:90px;border-radius:8px;border:1px solid var(--line)"> ` +
+      (codes.length ? codes.map(c => `<span class="chip">${esc(c.format)}: ${esc(c.message.slice(0, 40))}</span>`).join('') : '<span class="small muted">kein Code erkannt</span>');
+    return generateDirect({ items: [{ id: uid(), kind: 'bild', title: file.name && !/^image\.\w+$/.test(file.name) ? file.name : 'Screenshot ' + fmtDate(new Date().toISOString()), text: 'Screenshot', mime: 'image/jpeg', data, source: 'Screenshot', created: new Date().toISOString() }], codes, label: 'Screenshot' });
+  } catch (e) { toast(e.message, 5000); setDirectStatus(''); }
+}
+async function directFromEvents(evs, source) {
+  const list = evs.filter(e => inRange(e.start) || e.rrule);
+  if (!list.length) return toast('Keine Termine im eingestellten Zeitraum.');
+  if (list.length > 25 && !confirm(`${list.length} Termine direkt in Karten umwandeln? (Tipp: kleineren Zeitraum in den Einstellungen wählen)`)) return;
+  return generateDirect({ items: list.map(e => evToItem(e, source)), label: list.length === 1 ? 'Kalendertermin' : 'Kalender', many: list.length > 1 });
 }
 
 /* =========================================================
@@ -1502,8 +1849,8 @@ $('#btnGoogle').onclick = async () => {
   try {
     const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent($('#gCal').value.trim() || 'primary')}/events?timeMin=${min}&timeMax=${max}&singleEvents=true&orderBy=startTime&maxResults=250`, { headers: { Authorization: 'Bearer ' + tok } });
     const j = await r.json(); if (!r.ok) throw new Error(j.error ? j.error.message : 'HTTP ' + r.status);
-    addEvents((j.items || []).map(ev => ({ title: ev.summary, start: ev.start && (ev.start.dateTime || ev.start.date), end: ev.end && (ev.end.dateTime || ev.end.date), location: ev.location, text: [ev.description, ev.hangoutLink, ev.htmlLink].filter(Boolean).join('\n') })), 'Google Kalender');
-    showTab('eingang');
+    ((evs, src) => $('#gDirect').checked ? directFromEvents(evs, src) : addEvents(evs, src))((j.items || []).map(ev => ({ title: ev.summary, start: ev.start && (ev.start.dateTime || ev.start.date), end: ev.end && (ev.end.dateTime || ev.end.date), location: ev.location, text: [ev.description, ev.hangoutLink, ev.htmlLink].filter(Boolean).join('\n') })), 'Google Kalender');
+    if (!$('#gDirect').checked) showTab('eingang');
   } catch (e) { toast('Google: ' + e.message, 5000); }
 };
 $('#btnGraph').onclick = async () => {
@@ -1513,8 +1860,8 @@ $('#btnGraph').onclick = async () => {
     const r = await fetch(`https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${min}&endDateTime=${max}&$top=250&$orderby=start/dateTime`, { headers: { Authorization: 'Bearer ' + tok, Prefer: 'outlook.timezone="UTC"' } });
     const j = await r.json(); if (!r.ok) throw new Error(j.error ? j.error.message : 'HTTP ' + r.status);
     const z = s => s ? new Date(s.replace(/(\.\d+)?$/, '') + 'Z').toISOString() : '';
-    addEvents((j.value || []).map(ev => ({ title: ev.subject, start: z(ev.start && ev.start.dateTime), end: z(ev.end && ev.end.dateTime), location: ev.location && ev.location.displayName, text: [ev.bodyPreview, ev.onlineMeeting && ev.onlineMeeting.joinUrl].filter(Boolean).join('\n') })), 'Outlook');
-    showTab('eingang');
+    ((evs, src) => $('#msDirect').checked ? directFromEvents(evs, src) : addEvents(evs, src))((j.value || []).map(ev => ({ title: ev.subject, start: z(ev.start && ev.start.dateTime), end: z(ev.end && ev.end.dateTime), location: ev.location && ev.location.displayName, text: [ev.bodyPreview, ev.onlineMeeting && ev.onlineMeeting.joinUrl].filter(Boolean).join('\n') })), 'Outlook');
+    if (!$('#msDirect').checked) showTab('eingang');
   } catch (e) { toast('Outlook: ' + e.message, 5000); }
 };
 
@@ -1572,12 +1919,64 @@ window.addEventListener('beforeunload', finishEdit);
 function hashImport() {
   const h = location.hash.slice(1); if (!h) return;
   const p = new URLSearchParams(h); const t = p.get('add');
-  if (t) { addItem({ kind: 'text', title: p.get('title') || t.split('\n')[0].slice(0, 70), text: t, source: 'Kurzbefehl / Link' }); toast('Aus Link übernommen'); history.replaceState(null, '', location.pathname + location.search); }
+  const clear = () => history.replaceState(null, '', location.pathname + location.search);
+  if (p.has('mail')) { clear(); directMode('mail'); $('#dMail').value = p.get('mail'); directFromMail(p.get('mail'), 'Kurzbefehl'); return; }
+  if (p.has('shot')) { clear(); directMode('shot'); toast('Tippe auf „Bild aus Zwischenablage einsetzen“.', 5000); return; }
+  if (t && p.get('direct') === '1') {
+    clear(); const it = { id: uid(), kind: 'text', title: p.get('title') || t.split('\n')[0].slice(0, 70), text: t, source: 'Kurzbefehl / Link', created: new Date().toISOString() };
+    generateDirect({ items: [it], label: 'Kurzbefehl' }); return;
+  }
+  if (t) { addItem({ kind: 'text', title: p.get('title') || t.split('\n')[0].slice(0, 70), text: t, source: 'Kurzbefehl / Link' }); toast('Aus Link übernommen'); clear(); }
 }
+
+/* Direkt-Bereich */
+function directMode(m) {
+  $$('#directPanel .seg button').forEach(b => b.classList.toggle('active', b.dataset.dm === m));
+  $$('#directPanel [data-dpane]').forEach(p => p.hidden = p.dataset.dpane !== m);
+  showTab('eingang');
+}
+$('#directPanel .seg').addEventListener('click', e => { const b = e.target.closest('button[data-dm]'); if (b) directMode(b.dataset.dm); });
+$('#btnDMail').onclick = () => directFromMail($('#dMail').value, 'eingefügte Mail');
+$('#btnDEml').onclick = () => $('#dEml').click();
+$('#dEml').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) directFromMail(await f.text(), f.name); };
+$('#btnDTermin').onclick = () => {
+  const title = $('#dtTitle').value.trim(); if (!title) return toast('Bitte einen Termin-Titel eingeben.');
+  const ev = { title, start: fromLocalInput($('#dtStart').value), end: fromLocalInput($('#dtEnd').value), location: $('#dtLoc').value.trim(), text: $('#dtNote').value.trim() };
+  generateDirect({ items: [evToItem(ev, 'Eingabe')], label: 'Kalendertermin' });
+  ['#dtTitle', '#dtStart', '#dtEnd', '#dtLoc', '#dtNote'].forEach(k => $(k).value = '');
+};
+$('#btnDIcs').onclick = () => $('#dIcs').click();
+$('#dIcs').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (f) directFromEvents(parseICS(await f.text()), 'Datei ' + f.name); };
+const dShot = $('#dShotDrop');
+dShot.onclick = () => $('#dShot').click();
+$('#dShot').onchange = e => { const f = e.target.files[0]; e.target.value = ''; directFromImage(f); };
+['dragenter', 'dragover'].forEach(ev => dShot.addEventListener(ev, e => { e.preventDefault(); dShot.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => dShot.addEventListener(ev, e => { e.preventDefault(); dShot.classList.remove('over'); }));
+dShot.addEventListener('drop', e => {
+  const f = e.dataTransfer.files[0]; if (!f) return;
+  if (/\.eml$/i.test(f.name)) f.text().then(t => directFromMail(t, f.name));
+  else if (/\.ics$/i.test(f.name)) f.text().then(t => directFromEvents(parseICS(t), 'Datei ' + f.name));
+  else directFromImage(f);
+});
+$('#btnDClip').onclick = async () => {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.read) throw new Error('Dieser Browser erlaubt kein Bild-Einsetzen per Knopf – bitte ⌘V / Strg+V oder „auswählen“.');
+    for (const it of await navigator.clipboard.read()) {
+      const t = it.types.find(x => x.startsWith('image/'));
+      if (t) return directFromImage(new File([await it.getType(t)], 'Screenshot.png', { type: t }));
+    }
+    toast('In der Zwischenablage ist kein Bild.');
+  } catch (e) { toast(e.message, 5000); }
+};
+document.addEventListener('paste', e => {
+  const el = e.target, typing = el && (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT');
+  const img = Array.from((e.clipboardData && e.clipboardData.files) || []).find(f => f.type.startsWith('image/') || f.type === 'application/pdf');
+  if (img && (!typing || el.id === 'dMail')) { e.preventDefault(); directMode('shot'); directFromImage(img); }
+});
 
 /* Start */
 renderSettings(); renderCatalog(); renderAll(); hashImport();
-if (!window.JSZip || !window.forge || !window.qrcode) setTimeout(() => toast('Hinweis: Einige Bibliotheken fehlen (offline?). Export/QR eingeschränkt.', 5000), 600);
+if (!window.JSZip || !window.forge || !window.qrcode || !window.jsQR) setTimeout(() => toast('Hinweis: Einige Bibliotheken fehlen (offline?). Export/QR eingeschränkt.', 5000), 600);
 </script>
 </body>
 </html>

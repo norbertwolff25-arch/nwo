@@ -10,6 +10,17 @@ Termine, Mails, Mitgliedsdaten, Fotos von Karten und Notizen sammeln. Claude erk
 - Für die KI: unter **Einstellungen** einen Anthropic-API-Schlüssel eintragen. Ohne Schlüssel arbeitet die Werkbank mit lokalen Regeln.
 - Daten bleiben im Browser (`localStorage`). Der API-Schlüssel geht nur an `api.anthropic.com`.
 
+## Direkt zur Karte
+
+Oben im Eingang: Mail, Kalendertermin oder Screenshot hinein, fertige Karte heraus, ohne Umweg über Analyse und Übernehmen.
+
+- **Mail**: Text, HTML oder kompletten Quelltext einfügen oder eine `.eml`-Datei wählen. Gelesen werden Betreff, Absender, Text, Anhänge (Bilder, PDFs, Kalendereinladungen, `.pkpass`) und die strukturierten Buchungsdaten (schema.org: Zug, Bus, Flug, Veranstaltung, Hotel, Restaurant, Mietwagen). Buchungsdaten werden ohne KI exakt übernommen, inklusive Ticket-Code.
+- **Kalendertermin**: Formular für einen Termin oder `.ics`-Datei, dann je Termin eine Karte. Bei Google/Outlook (Reiter Schnittstellen) gibt es den Haken „direkt als Karten erzeugen“.
+- **Screenshot / Foto / PDF**: auswählen, hineinziehen, einfügen (⌘V / Strg+V) oder „Bild aus Zwischenablage einsetzen“. Die Karte entsteht sofort. QR-Codes werden lokal gelesen (jsQR, bei Chrome zusätzlich BarcodeDetector für Strichcodes, PDF417, Aztec) und exakt in die Karte übernommen.
+- **Kurzbefehl/Link**: `#add=<Text>&direct=1`, `#mail=<Mailtext>`, `#shot`.
+
+Ohne API-Schlüssel greifen Buchungsdaten, Codes und lokale Regeln; Texte aus Bildern liest nur Claude.
+
 ## Ablauf
 
 1. **Eingang**: Text einfügen, Dateien ablegen (`.ics`, `.vcf`, `.pkpass`, Fotos, PDF, `.txt/.eml`), ICS-Abo laden, Google-/Outlook-Kalender per Token holen oder per iPhone-Kurzbefehl übergeben (`…/wallet-werkbank.html#add=<Text>`).
@@ -31,4 +42,4 @@ Der Reiter **Schnittstellen** enthält einen Katalog (Kalender, Mail, Tickets, R
 ## Technik
 
 - Claude Messages API direkt aus dem Browser (`anthropic-dangerous-direct-browser-access`), Standardmodell `claude-opus-5-5`, strukturierte Ausgabe per JSON-Schema, Websuche als Server-Tool, optionale Ausweichmodelle bei Ablehnung.
-- Bibliotheken von cdnjs: JSZip (Paket), node-forge (PKCS#7-Signatur), qrcode-generator (QR-Code).
+- Bibliotheken von cdnjs/jsDelivr: JSZip (Paket), node-forge (PKCS#7-Signatur), qrcode-generator (QR-Code), jsQR (QR-Codes in Bildern lesen).
