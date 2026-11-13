@@ -1,0 +1,13 @@
+{
+  "user": {"email": "max@example.org", "password": "geheim123", "created_at": "2018-04-01T10:00:00Z"},
+  "devices": [{"id": 1, "os": "iOS"}],
+  "contracts": [
+    {"id": 9001, "contract_number": "LV12345678", "insurer": {"name": "Beispiel Leben AG", "bafin_id": "1234"},
+     "category": {"name": "Rentenversicherung"}, "tariff": "Basisrente Klassik", "start_date": "2008-06-01",
+     "end_date": "2028-06-01", "premium": {"amount": 155.0, "currency": "EUR"}, "payment_interval": "monthly",
+     "state": "active", "advisor_comment": "Dynamik 5 % jährlich"},
+    {"id": 9002, "contract_number": "RS-2020-777", "insurer": {"name": "Neue Rechtsschutz AG"},
+     "category": {"name": "Rechtsschutz"}, "start_date": "2020-02-01", "premium": {"amount": 312.4, "currency": "EUR"},
+     "payment_interval": "yearly", "state": "terminated", "tags": ["privat", "beruf"]}
+  ]
+}

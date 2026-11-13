@@ -1,0 +1,6 @@
+﻿pay_id;konto;art;datum;richtung;betrag;gegenpartei;zweck;kategorie
+P-0001;DKB Giro;Lastschrift;02.01.2026;aus;150,00;Beispiel Leben AG;Beitrag LV 123 456 78 Jan 2026;Versicherung
+P-0002;DKB Giro;Lastschrift;15.03.2026;aus;1.234,56;Muster Sach SE;Vers.-Nr. HR-998877 Jahresbeitrag;Versicherung
+P-0003;DKB Giro;Lastschrift;01.02.2026;aus;23,90;Fiktiv Kranken;Beitrag 02/2026;Versicherung
+P-0004;DKB Giro;Gutschrift;10.04.2026;ein;80,00;Fiktiv Kranken;Erstattung KZ-55501 Zahnreinigung;Erstattung
+P-0005;Amex;Karte;12.04.2026;aus;9,99;Streamingdienst;Abo 1998877123;Freizeit
