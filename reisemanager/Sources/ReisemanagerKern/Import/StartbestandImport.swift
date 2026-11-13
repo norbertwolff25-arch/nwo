@@ -105,9 +105,10 @@ public enum StartbestandImport {
                 try Reise(
                     id: eintrag.nr, art: .dienstreise, typ: nil, anlass: eintrag.anlass, ort: nil, istStammeinsatz: false,
                     beginn: eintrag.beginn, beginnZeit: nil, beginnQuelle: eintrag.beginn == nil ? nil : herkunft,
-                    beginnSicherheit: eintrag.beginn == nil ? nil : .geschaetzt,
+                    // Daten aus der Arbeitsmappe sind vom Nutzer gepflegt: Nur Fahrplanzeiten dürfen sie ersetzen.
+                    beginnSicherheit: eintrag.beginn == nil ? nil : .wahrscheinlich,
                     ende: eintrag.ende, endeZeit: nil, endeQuelle: eintrag.ende == nil ? nil : herkunft,
-                    endeSicherheit: eintrag.ende == nil ? nil : .geschaetzt,
+                    endeSicherheit: eintrag.ende == nil ? nil : .wahrscheinlich,
                     verkehrsmittel: Textnorm.leerAlsNil(eintrag.verkehrsmittel), unterkunft: Textnorm.leerAlsNil(eintrag.unterkunft),
                     hinweis: nil, status: .erkannt, concurNr: nil, concurTitel: nil).insert(db)
                 neueReisen.insert(eintrag.nr)

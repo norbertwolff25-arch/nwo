@@ -6,4 +6,5 @@
 lokal/
 einstellungen.json
 startbestand*.json
+ereignisse*.json
 !beispiel/*.json

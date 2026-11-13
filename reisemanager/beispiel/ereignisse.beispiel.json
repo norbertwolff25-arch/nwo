@@ -1,0 +1,13 @@
+{
+  "abschnitte": [
+    { "reise": "D01", "art": "vorlauf", "von": "Privatadresse", "nach": "Musterstadt Hbf", "abfahrt": "2026-03-12 06:40", "ankunft": "2026-03-12 07:05", "verkehrsmittel": "Taxi" },
+    { "reise": "D01", "art": "hauptlauf", "von": "Musterstadt Hbf", "nach": "Zielstadt Hbf", "abfahrt": "2026-03-12 07:27", "ankunft": "2026-03-12 11:42", "verkehrsmittel": "ICE", "quelle": "bahn.de Auftrag 000000000000" },
+    { "reise": "D01", "art": "hauptlauf", "von": "Zielstadt Hbf", "nach": "Musterstadt Hbf", "abfahrt": "2026-03-14 15:10", "ankunft": "2026-03-14 19:31", "verkehrsmittel": "ICE", "quelle": "bahn.de Auftrag 000000000000" }
+  ],
+  "aufenthalte": [
+    { "reise": "D01", "hotel": "Hotel Muster", "ort": "Zielstadt", "anreise": "2026-03-12", "abreise": "2026-03-14", "quelle": "Hotelportal" }
+  ],
+  "termine": [
+    { "titel": "Messe Zielstadt", "ort": "Zielstadt", "beginn": "2026-03-12", "beginnZeit": "13:00", "ende": "2026-03-14", "endeZeit": "13:00", "quelle": "Kalender" }
+  ]
+}

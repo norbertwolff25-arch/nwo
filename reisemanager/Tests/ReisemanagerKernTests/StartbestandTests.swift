@@ -92,7 +92,12 @@ final class StartbestandTests: XCTestCase {
             XCTAssertEqual(protokoll.count, 1)
             XCTAssertEqual(protokoll.first?.sicherheit, .wahrscheinlich)
             XCTAssertNotNil(protokoll.first?.regelId)
-            XCTAssertEqual(try Reise.fetchOne(d, key: "D01")!.beginnSicherheit, .geschaetzt)
+            XCTAssertEqual(try Reise.fetchOne(d, key: "D01")!.beginnSicherheit, .wahrscheinlich)
+        }
+        // Zahlungsdaten und Uber-Fahrten überschreiben die gepflegten Daten der Mappe nicht.
+        XCTAssertEqual(try Vorbelegung.anwenden(in: db), 0)
+        try db.queue.read { d in
+            XCTAssertEqual(try Reise.fetchOne(d, key: "D01")!.beginn, Tag(iso: "2026-03-12"))
 
             let bahn = try XCTUnwrap(Position.filter(Column("haendler") == "Bahn Vertrieb").fetchOne(d))
             XCTAssertTrue(bahn.vorauskauf, "Zahlung vor Reisebeginn")

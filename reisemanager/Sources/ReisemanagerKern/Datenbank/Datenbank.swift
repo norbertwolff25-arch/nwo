@@ -165,6 +165,39 @@ public final class Datenbank {
                 t.column("herkunft", .text)
             }
         }
+        m.registerMigration("v2") { db in
+            try db.create(table: "hotelaufenthalt") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("reiseId", .text).indexed().references("reise", onDelete: .setNull)
+                t.column("hotel", .text).notNull()
+                t.column("ort", .text)
+                t.column("anreise", .text).notNull()
+                t.column("abreise", .text).notNull()
+                t.column("quelle", .text)
+            }
+            try db.create(table: "termin") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("titel", .text).notNull()
+                t.column("ort", .text)
+                t.column("beginn", .text).notNull()
+                t.column("beginnZeit", .text)
+                t.column("ende", .text).notNull()
+                t.column("endeZeit", .text)
+                t.column("quelle", .text)
+            }
+            try db.create(table: "vorschlag") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("zahlungId", .text).notNull().unique().references("zahlung", onDelete: .cascade)
+                t.column("art", .text).notNull()
+                t.column("zielId", .text)
+                t.column("kostenart", .text).notNull()
+                t.column("begruendung", .text).notNull()
+                t.column("sicherheit", .text).notNull()
+                t.column("status", .text).notNull()
+                t.column("gruppe", .text)
+                t.column("regelId", .integer).references("regel", onDelete: .setNull)
+            }
+        }
         return m
     }
 }

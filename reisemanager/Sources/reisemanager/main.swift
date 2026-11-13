@@ -12,10 +12,19 @@ reisemanager [--db <Pfad>] <Befehl>
   import paypal <Export.csv>                PayPal-Aktivitäten
   import startbestand <Datei.json> [...]    Startbestand (Mappe, Concur-Entwürfe, offene Punkte)
   import belege <Ordner>                    Belegbilder aus dem Belegordner
+  import ereignisse <Datei.json>            Reiseverläufe, Hotelaufenthalte, Termine
   paaren                                    PayPal mit Amex-Finanzierung paaren
+  erkennen                                  Beginn und Ende vorbelegen, Zahlungen zuordnen (nur Vorschläge)
+  vorschlaege                               offene Zuordnungsvorschläge
+  annehmen <Nr> [Ziel] [--regel]            Vorschlag übernehmen, Ziel = Reise oder Sachkostenabrechnung
+  ablehnen <Nr>                             Vorschlag verwerfen
+  pruefen [Reise]                           Plausi-Prüfer: Ampel, Befunde, Nachfragen
+  antwort <Schlüssel> <Nr>                  Nachfrage beantworten
+  besorgen                                  Liste „Was ich noch besorgen muss“ nach Fundort
   status                                    Reisen, Sachkosten, Summen, offene Punkte
 
 Datenbank: --db, sonst $REISEMANAGER_DB, sonst ~/Library/Application Support/Reisemanager/reisemanager.sqlite
+Einstellungen: --einstellungen, sonst $REISEMANAGER_EINSTELLUNGEN (Wohnort, Frist der Wiedervorlage)
 """
 
 func beenden(_ text: String) -> Never {
@@ -30,6 +39,14 @@ if let index = argumente.firstIndex(of: "--db") {
     datenbankPfad = argumente[index + 1]
     argumente.removeSubrange(index...index + 1)
 }
+var einstellungenPfad = ProcessInfo.processInfo.environment["REISEMANAGER_EINSTELLUNGEN"]
+if let index = argumente.firstIndex(of: "--einstellungen") {
+    guard index + 1 < argumente.count else { beenden("--einstellungen braucht einen Pfad") }
+    einstellungenPfad = argumente[index + 1]
+    argumente.removeSubrange(index...index + 1)
+}
+let alsRegel = argumente.contains("--regel")
+argumente.removeAll { $0 == "--regel" }
 guard let befehl = argumente.first, befehl != "--help", befehl != "hilfe" else { print(hilfe); exit(0) }
 
 let pfad = datenbankPfad ?? (NSHomeDirectory() + "/Library/Application Support/Reisemanager/reisemanager.sqlite")
@@ -42,8 +59,14 @@ func links(_ text: String, _ breite: Int) -> String {
     return gekuerzt + String(repeating: " ", count: max(0, breite - gekuerzt.count))
 }
 
+let heute: Tag = {
+    let teile = Calendar(identifier: .gregorian).dateComponents([.year, .month, .day], from: Date())
+    return Tag(jahr: teile.year!, monat: teile.month!, tag: teile.day!)!
+}()
+
 do {
     let datenbank = try Datenbank(pfad: pfad)
+    let einstellungen = try einstellungenPfad.map { try Einstellungen.laden(pfad: $0) }
     switch befehl {
     case "import":
         guard argumente.count >= 3 else { beenden(hilfe) }
@@ -56,6 +79,7 @@ do {
             case "paypal": ergebnis = try PayPalImport.importiere(datei: quelle, in: datenbank)
             case "startbestand": ergebnis = try StartbestandImport.importiere(datei: quelle, in: datenbank)
             case "belege": ergebnis = try BelegordnerImport.importiere(ordner: quelle, in: datenbank)
+            case "ereignisse": ergebnis = try EreignisImport.importiere(datei: quelle, in: datenbank)
             default: beenden("Unbekannte Importart: \(art)\n\n\(hilfe)")
             }
             print("\(URL(fileURLWithPath: quelle).lastPathComponent): \(ergebnis.zusammenfassung)")
@@ -67,6 +91,69 @@ do {
         }
     case "paaren":
         print("\(try Paarung.paareBilden(in: datenbank)) PayPal-Zahlungen mit Amex gepaart")
+    case "erkennen":
+        let reisen = try Vorbelegung.anwenden(in: datenbank)
+        let neue = try Zuordnung.vorschlaegeBilden(in: datenbank, wohnort: einstellungen?.privatadresse.ort)
+        print("Beginn oder Ende bei \(reisen) Reisen neu vorbelegt, \(neue) neue Zuordnungsvorschläge")
+        if einstellungen == nil { print("Hinweis: ohne Einstellungen wird „Hotel am Wohnort“ nicht erkannt") }
+    case "vorschlaege":
+        try datenbank.queue.read { db in
+            let offene = try Vorschlag.filter(Column("status") == Vorschlagsstatus.offen.rawValue).order(Column("gruppe"), Column("id")).fetchAll(db)
+            print("Offene Vorschläge: \(offene.count)")
+            for v in offene {
+                guard let z = try Zahlung.fetchOne(db, key: v.zahlungId) else { continue }
+                let ziel: String
+                switch v.art {
+                case .zuReise, .zuSachkosten: ziel = "→ \(v.zielId ?? "Ziel fehlt")"
+                case .neueReise: ziel = "→ neue Reise \(v.gruppe ?? "")"
+                case .privat: ziel = "→ privat"
+                case .vorauskaufOffen: ziel = "→ Reise offen"
+                }
+                print("  \(rechts(String(v.id!), 4))  \(z.datum)  \(links(z.haendler, 30)) \(rechts(z.betragCent.map { Geld.text(cent: -$0) } ?? "?", 9))  \(links(ziel, 24)) \(v.sicherheit.rawValue): \(v.begruendung)")
+            }
+        }
+    case "annehmen":
+        guard argumente.count >= 2, let nummer = Int64(argumente[1]) else { beenden(hilfe) }
+        let ziel = try Zuordnung.annehmen(in: datenbank, vorschlag: nummer, ziel: argumente.count > 2 ? argumente[2] : nil, alsRegel: alsRegel)
+        print("Vorschlag \(nummer) übernommen\(ziel.map { ": \($0)" } ?? " (privat)")")
+    case "ablehnen":
+        guard argumente.count >= 2, let nummer = Int64(argumente[1]) else { beenden(hilfe) }
+        try Zuordnung.ablehnen(in: datenbank, vorschlag: nummer)
+        print("Vorschlag \(nummer) verworfen")
+    case "pruefen":
+        let berichte = try Plausi.pruefe(in: datenbank, einstellungen: einstellungen, heute: heute)
+            .filter { argumente.count < 2 || $0.bezug == argumente[1] }
+        for bericht in berichte {
+            let typ = bericht.typ.map { "  [\($0.text)]" } ?? ""
+            print("\(links(bericht.bezug, 4)) \(links(bericht.ampel.text.uppercased(), 5)) \(bericht.titel)\(typ)")
+            if argumente.count < 2 && bericht.ampel == .gruen { continue }
+            for befund in bericht.befunde where befund.art != .belegbild || argumente.count >= 2 {
+                print("       \(befund.ampel.text): \(befund.text)\(befund.antwort.map { " (Antwort: \($0))" } ?? "")")
+            }
+            let bilder = bericht.befunde.filter { $0.art == .belegbild }
+            if argumente.count < 2, !bilder.isEmpty {
+                let rot = bilder.filter { $0.ampel == .rot }.count
+                print("       Belegbilder: \(bilder.count - rot) fehlen bei bekanntem Beleg, \(rot) Positionen ohne Beleg")
+            }
+            for (schluessel, frage) in bericht.fragen {
+                let optionen = frage.optionen.enumerated().map { "\($0.offset + 1) \($0.element.text)" }.joined(separator: " | ")
+                print("       ? \(frage.text)  [\(schluessel)]  \(optionen)")
+            }
+        }
+        let zaehlung = Dictionary(grouping: berichte, by: \.ampel).mapValues(\.count)
+        print("\nAmpel: \(zaehlung[.gruen] ?? 0) grün, \(zaehlung[.gelb] ?? 0) gelb, \(zaehlung[.rot] ?? 0) rot. Antworten mit: reisemanager antwort <Schlüssel> <Nr>")
+    case "antwort":
+        guard argumente.count >= 3, let nummer = Int(argumente[2]) else { beenden(hilfe) }
+        let antwort = try Plausi.beantworte(in: datenbank, schluessel: argumente[1], nummer: nummer, einstellungen: einstellungen)
+        print("\(argumente[1]): \(antwort)")
+    case "besorgen":
+        let alle = try Plausi.pruefe(in: datenbank, einstellungen: einstellungen, heute: heute).flatMap(\.besorgen)
+        print("Was ich noch besorgen muss: \(alle.count)")
+        let jeFundort = Dictionary(grouping: alle, by: \.fundort)
+        for fundort in jeFundort.keys.sorted() {
+            print("\n\(fundort)")
+            for eintrag in jeFundort[fundort]! { print("  \(links(eintrag.bezug, 4)) \(eintrag.text)") }
+        }
     case "status":
         let jeReise = try Summen.jeReise(in: datenbank)
         let jeSachkosten = try Summen.jeSachkostenabrechnung(in: datenbank)

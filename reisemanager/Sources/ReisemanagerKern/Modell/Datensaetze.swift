@@ -152,7 +152,7 @@ public struct BelegbildBeleg: Codable, FetchableRecord, PersistableRecord, Senda
     public var belegId: String
 }
 
-/// Gelernte Regel aus einer Entscheidung, z. B. „Hotels in Düsseldorf = privat“.
+/// Gelernte Regel aus einer Entscheidung, z. B. „Hotels am Wohnort = privat“.
 public struct Regel: Codable, FetchableRecord, MutablePersistableRecord, Sendable {
     public static let databaseTableName = "regel"
     public var id: Int64?
