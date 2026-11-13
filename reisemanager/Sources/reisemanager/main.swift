@@ -21,6 +21,7 @@ reisemanager [--db <Pfad>] <Befehl>
   pruefen [Reise]                           Plausi-Prüfer: Ampel, Befunde, Nachfragen
   antwort <Schlüssel> <Nr>                  Nachfrage beantworten
   besorgen                                  Liste „Was ich noch besorgen muss“ nach Fundort
+  bericht <Reise> [Datei.md]                Kurzbericht als Markdown
   status                                    Reisen, Sachkosten, Summen, offene Punkte
 
 Datenbank: --db, sonst $REISEMANAGER_DB, sonst ~/Library/Application Support/Reisemanager/reisemanager.sqlite
@@ -153,6 +154,17 @@ do {
         for fundort in jeFundort.keys.sorted() {
             print("\n\(fundort)")
             for eintrag in jeFundort[fundort]! { print("  \(links(eintrag.bezug, 4)) \(eintrag.text)") }
+        }
+    case "bericht":
+        guard argumente.count >= 2 else { beenden(hilfe) }
+        guard let text = try Bericht.markdown(in: datenbank, bezug: argumente[1], einstellungen: einstellungen, heute: heute) else {
+            beenden("\(argumente[1]) gibt es nicht")
+        }
+        if argumente.count > 2 {
+            try text.write(toFile: argumente[2], atomically: true, encoding: .utf8)
+            print("Bericht gespeichert: \(argumente[2])")
+        } else {
+            print(text)
         }
     case "status":
         let jeReise = try Summen.jeReise(in: datenbank)

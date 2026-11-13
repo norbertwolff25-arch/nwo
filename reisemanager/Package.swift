@@ -23,3 +23,9 @@ let package = Package(
         ),
     ]
 )
+
+// Die SwiftUI-Oberfläche gibt es nur auf dem Mac. Der Kern baut und testet auch unter Linux.
+#if os(macOS)
+package.products.append(.executable(name: "ReisemanagerApp", targets: ["ReisemanagerApp"]))
+package.targets.append(.executableTarget(name: "ReisemanagerApp", dependencies: ["ReisemanagerKern"]))
+#endif

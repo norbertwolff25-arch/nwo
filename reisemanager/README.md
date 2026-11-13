@@ -2,7 +2,9 @@
 
 Lokale macOS-App für Dienstreisen und Sachkosten: Zahlungen und Belege einsammeln, Reisen erkennen, Belege zuordnen, Lücken finden und Abrechnungen in SAP Concur als Entwurf vorbereiten. Eingereicht wird nie von der App.
 
-**Stand: Etappe 3 von 5 – Reiseerkennung und Plausi-Prüfer.** Es gibt den Kern als Swift-Paket und eine Kommandozeile. SwiftUI-Oberfläche und Concur-Anbindung folgen.
+**Stand: Etappe 4 von 5 – Oberfläche.** Es gibt den Kern als Swift-Paket, eine Kommandozeile und eine SwiftUI-App. Die Concur-Anbindung folgt.
+
+> Die SwiftUI-App ist unter Linux geschrieben und dort nur auf Syntax geprüft. Der erste Bau auf dem Mac steht aus und kann Korrekturen brauchen. Kern und Kommandozeile sind gebaut und getestet.
 
 ## Persönliche Daten
 
@@ -45,6 +47,24 @@ swift run reisemanager import belege ~/Pfad/zum/Belegordner
 swift run reisemanager status
 ```
 
+## App starten (nur macOS)
+
+```sh
+mkdir -p ~/Library/Application\ Support/Reisemanager
+cp lokal/einstellungen.json ~/Library/Application\ Support/Reisemanager/
+swift run ReisemanagerApp
+```
+
+Die App nutzt dieselbe Datenbank wie die Kommandozeile.
+
+- **Dashboard:** alle Reisen und Sachkosten mit Ampel, Summe, Status und Concur-Nummer.
+- **Reise:** Beginn und Ende mit Quelle und Sicherheitsstufe, Nachfragen als Schaltflächen, Befunde, Positionen mit Belegbild-Ampel, Besorgungsliste, offene Punkte, Status.
+- **Drag & Drop:** Eine Position auf eine andere Reise oder Sachkostenabrechnung in der Seitenleiste ziehen.
+- **Vorschläge:** übernehmen, anderer Reise zuordnen, als privat merken oder verwerfen.
+- **Was ich noch besorgen muss:** nach Fundort gruppiert.
+- **Einlesen:** alle Importe über den Dateidialog, mit Protokoll.
+- **Bericht speichern:** Kurzbericht je Reise als Markdown. Die PDF-Fassung folgt.
+
 ## Erkennen und prüfen
 
 ```sh
@@ -66,6 +86,7 @@ swift run reisemanager pruefen                # alle Reisen und Sachkosten mit A
 swift run reisemanager pruefen D10            # eine Reise mit allen Befunden
 swift run reisemanager antwort D10:hotel 2    # Nachfrage beantworten
 swift run reisemanager besorgen               # „Was ich noch besorgen muss“, nach Fundort
+swift run reisemanager bericht D10 D10.md     # Kurzbericht als Markdown
 ```
 
 Die Datenbank liegt unter `~/Library/Application Support/Reisemanager/reisemanager.sqlite`. Ein anderer Ort geht über `--db <Pfad>` oder `REISEMANAGER_DB`. Jeder Import darf wiederholt werden, bekannte Einträge entstehen nicht doppelt.
@@ -85,6 +106,8 @@ Die Datenbank liegt unter `~/Library/Application Support/Reisemanager/reisemanag
 - **Belegbild-Ampel** je Reise: grün (alle Belege mit Bild), gelb (Beleg oder Zahlung bekannt, Bild fehlt), rot (Position ohne Beleg oder Soll-Beleg fehlt). Bevorstehende Reisen werden höchstens gelb.
 - **Liste „Was ich noch besorgen muss“** mit Fundort je Eintrag.
 - **Wiedervorlage:** Hinweis bei Reisen, die länger als die Frist beendet und nicht eingereicht sind.
+- **Lesesicht und Bearbeitung** für die Oberfläche: Dashboard-Zeilen, Reisedetail, Position verschieben, Status setzen, offene Punkte erledigen. Jede Änderung wird protokolliert.
+- **Kurzbericht** je Reise als Markdown mit Reisedaten, Positionen, Befunden, Besorgungsliste und offenen Punkten.
 - **Summen** je Reise im Aufbau der Arbeitsmappe (Fahrt, Unterkunft, Sonstiges). Privatreisen gehen in keine Summe ein.
 
 Grundsatz: keine erfundenen Werte. Unlesbare Zeilen meldet der Import mit Zeilennummer, fehlende Beträge bleiben leer und zählen als offene Punkte.
@@ -93,6 +116,7 @@ Grundsatz: keine erfundenen Werte. Unlesbare Zeilen meldet der Import mit Zeilen
 
 - PayPal-Export: Die Spaltennamen folgen dem deutschen Standardexport. Die Zuordnung der Euro-Beträge über die Zeilen „Währungsumrechnung“ ist nur mit erfundenen Daten getestet.
 - Amex-Fremdwährung: gelesen wird das Muster „Foreign Spend Amount: … Commission Amount: …“ aus der Spalte „Weitere Details“.
+- Die SwiftUI-App: nicht gebaut, nicht gestartet.
 - Zuordnungsvorschläge gegen die echte Zahlungsdatenbank. Die Händlererkennung arbeitet mit einer Wortliste und wird an den echten Daten nachzuschärfen sein.
 - Texterkennung der Belegbilder (Apple Vision) kommt mit der Oberfläche, weil sie nur auf dem Mac läuft.
 
@@ -107,8 +131,10 @@ Sources/ReisemanagerKern/   Kern ohne Oberfläche
   Regeln/                   Abrechnungstitel, Einstellungen, Händlerklassen, Regelanwendung
   Erkennung/                Vorbelegung, Zuordnungsvorschläge
   Pruefung/                 Plausi-Prüfer
+  Ansicht/                  Lesesicht, Bearbeitung und Bericht für die Oberfläche
   Auswertung/               Summen
 Sources/reisemanager/       Kommandozeile
+Sources/ReisemanagerApp/    SwiftUI-App (nur macOS)
 Tests/                      Tests mit erfundenen Daten
 werkzeuge/                  Python-Hilfsskript, zusätzlich als .txt-Lesefassung
 beispiel/                   Vorlagen für die lokalen Dateien
