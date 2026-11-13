@@ -58,9 +58,9 @@ struct WerteTests {
     }
 
     @Test func normalisierung() {
-        #expect(Text.vertragsnummer("LV-123.456 78") == "LV12345678")
-        #expect(Text.versichererSchluessel("Muster Sach SE") == Text.versichererSchluessel("Muster-Sach"))
-        #expect(Text.schluessel("Kündigungsfrist") == "kuendigungsfrist")
+        #expect(Textnorm.vertragsnummer("LV-123.456 78") == "LV12345678")
+        #expect(Textnorm.versichererSchluessel("Muster Sach SE") == Textnorm.versichererSchluessel("Muster-Sach"))
+        #expect(Textnorm.schluessel("Kündigungsfrist") == "kuendigungsfrist")
     }
 
     @Test func aufzaehlungen() {

@@ -44,11 +44,11 @@ public enum Dubletten {
     /// Gleiche Nummer und Versicherer. Versicherer gelten als gleich, wenn sie normalisiert übereinstimmen
     /// oder das erste Wort gleich ist („Allianz“ ↔ „Allianz Lebensversicherungs-AG“).
     public static func gleich(_ a: VertragsDaten, _ b: VertragsDaten) -> Bool {
-        let na = Text.vertragsnummer(a.vertragsnummer)
-        let nb = Text.vertragsnummer(b.vertragsnummer)
+        let na = Textnorm.vertragsnummer(a.vertragsnummer)
+        let nb = Textnorm.vertragsnummer(b.vertragsnummer)
         guard !na.isEmpty, na == nb else { return false }
-        let va = Text.versichererSchluessel(a.versicherer)
-        let vb = Text.versichererSchluessel(b.versicherer)
+        let va = Textnorm.versichererSchluessel(a.versicherer)
+        let vb = Textnorm.versichererSchluessel(b.versicherer)
         if va == vb { return true }
         if va.isEmpty || vb.isEmpty { return false }
         let ersteA = va.split(separator: " ").first
@@ -75,8 +75,8 @@ public enum Dubletten {
         ]
         return felder.compactMap { feld, wert in
             let x = wert(a), y = wert(b)
-            if feld == .vertragsnummer && Text.vertragsnummer(x) == Text.vertragsnummer(y) { return nil }
-            if feld == .versicherer && Text.versichererSchluessel(x) == Text.versichererSchluessel(y) { return nil }
+            if feld == .vertragsnummer && Textnorm.vertragsnummer(x) == Textnorm.vertragsnummer(y) { return nil }
+            if feld == .versicherer && Textnorm.versichererSchluessel(x) == Textnorm.versichererSchluessel(y) { return nil }
             // leerer Importwert ist kein Widerspruch
             if y.isEmpty || x == y { return nil }
             return Feldunterschied(feld: feld, bestand: x, importiert: y)

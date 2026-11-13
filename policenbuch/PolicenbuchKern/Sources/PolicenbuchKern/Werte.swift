@@ -1,7 +1,7 @@
 import Foundation
 
 /// Textnormalisierung für Vergleiche und Feldnamen.
-public enum Text {
+public enum Textnorm {
     /// Kleinbuchstaben, Umlaute gefaltet (ä→ae, ß→ss), nur Buchstaben und Ziffern.
     public static func schluessel(_ s: String) -> String {
         var ergebnis = ""

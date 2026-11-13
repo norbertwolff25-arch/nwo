@@ -1,0 +1,62 @@
+name: Policenbuch (macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['policenbuch/**', '.github/workflows/policenbuch.yml']
+  pull_request:
+    paths: ['policenbuch/**', '.github/workflows/policenbuch.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  bauen-und-testen:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: policenbuch
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode wählen
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.4.app || true
+          xcodebuild -version
+          swift --version
+
+      - name: Fachkern testen (swift test)
+        working-directory: policenbuch/PolicenbuchKern
+        run: swift test
+
+      - name: App bauen und testen (xcodebuild test)
+        run: |
+          set -o pipefail
+          xcodebuild -project Policenbuch.xcodeproj -scheme Policenbuch \
+            -destination 'platform=macOS' -derivedDataPath build \
+            test | tee xcodebuild-test.log | grep -E "error:|warning: |Test |✔|✘|\*\*" || true
+          grep -q "TEST SUCCEEDED" xcodebuild-test.log
+
+      - name: Release bauen
+        run: |
+          set -o pipefail
+          xcodebuild -project Policenbuch.xcodeproj -scheme Policenbuch -configuration Release \
+            -destination 'platform=macOS' -derivedDataPath build build | tail -5
+          codesign --verify --verbose=2 build/Build/Products/Release/Policenbuch.app
+          ditto -c -k --keepParent build/Build/Products/Release/Policenbuch.app Policenbuch-app.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Policenbuch-App
+          path: policenbuch/Policenbuch-app.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: xcodebuild-log
+          path: policenbuch/xcodebuild-test.log
+          if-no-files-found: ignore

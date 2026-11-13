@@ -21,7 +21,7 @@ public enum VertragsStatus: String, Codable, CaseIterable, Sendable, Identifiabl
 
     /// Erkennt deutsche und englische Schreibweisen (z. B. aus einem Clark-Export).
     public static func erkennen(_ text: String) -> VertragsStatus? {
-        let t = Text.schluessel(text)
+        let t = Textnorm.schluessel(text)
         if t.isEmpty { return nil }
         let tabelle: [(VertragsStatus, [String])] = [
             (.pruefen, ["pruefen", "prufen", "review", "unklar", "offen", "check", "pending"]),
@@ -70,7 +70,7 @@ public enum Zahlweise: String, Codable, CaseIterable, Sendable, Identifiable {
     }
 
     public static func erkennen(_ text: String) -> Zahlweise? {
-        let t = Text.schluessel(text)
+        let t = Textnorm.schluessel(text)
         if t.isEmpty { return nil }
         let tabelle: [(Zahlweise, [String])] = [
             (.vierteljaehrlich, ["vierteljaehrlich", "vierteljahrlich", "vj", "vierteljahr", "quarterly", "quartal", "quartalsweise", "4"]),
@@ -104,7 +104,7 @@ public enum Betreuer: String, Codable, CaseIterable, Sendable, Identifiable {
     }
 
     public static func erkennen(_ text: String) -> Betreuer? {
-        let t = Text.schluessel(text)
+        let t = Textnorm.schluessel(text)
         if t.isEmpty { return nil }
         if t.contains("clark") { return .clark }
         if t.hasPrefix("neu") || t.contains("new") { return .neu }
@@ -190,7 +190,7 @@ public struct VertragsDaten: Codable, Hashable, Sendable, Identifiable {
 
     /// Schlüssel für die Dublettenerkennung.
     public var dublettenSchluessel: String {
-        Text.vertragsnummer(vertragsnummer) + "|" + Text.versichererSchluessel(versicherer)
+        Textnorm.vertragsnummer(vertragsnummer) + "|" + Textnorm.versichererSchluessel(versicherer)
     }
 
     /// Hängt eine Notiz zeilenweise an, ohne Doppelungen.

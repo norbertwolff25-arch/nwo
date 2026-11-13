@@ -29,7 +29,7 @@ public enum Zielfeld: String, CaseIterable, Codable, Sendable, Identifiable {
         }
     }
 
-    /// Bekannte Spaltennamen (normalisiert mit `Text.schluessel`).
+    /// Bekannte Spaltennamen (normalisiert mit `Textnorm.schluessel`).
     static let synonyme: [Zielfeld: [String]] = [
         .versicherer: ["versicherer", "gesellschaft", "versicherungsgesellschaft", "anbieter", "insurer", "insurancecompany",
                        "company", "carrier", "provider", "risikotraeger", "vu", "versicherungsunternehmen", "insurername",
@@ -62,7 +62,7 @@ public enum Zielfeld: String, CaseIterable, Codable, Sendable, Identifiable {
                                    "zugangsdaten", "login", "benutzername", "username", "apikey", "sessionid"]
 
     public static func istGeheim(_ feldname: String) -> Bool {
-        let k = Text.schluessel(feldname)
+        let k = Textnorm.schluessel(feldname)
         let woerter = feldname.lowercased().split(whereSeparator: { !($0.isLetter || $0.isNumber) }).map(String.init)
         return geheim.contains { g in k == g || woerter.contains(g) || (g.count >= 5 && k.hasSuffix(g)) }
     }
@@ -75,10 +75,10 @@ public enum Zielfeld: String, CaseIterable, Codable, Sendable, Identifiable {
     /// Güte 3: ganzer Name, 2: letztes Segment oder „eltern+feld“, 1: nur Elternobjekt („insurer.bafin_id“).
     static func vorschlagMitGuete(fuer spalte: String) -> (feld: Zielfeld, guete: Int)? {
         if istGeheim(spalte) { return (.ignorieren, 3) }
-        let ganz = Text.schluessel(spalte)
+        let ganz = Textnorm.schluessel(spalte)
         if let treffer = suche(ganz) { return (treffer, 3) }
         // verschachtelt ("insurer.name", "premium.amount", "contract.number")
-        let segmente = spalte.split(whereSeparator: { $0 == "." || $0 == "/" }).map { Text.schluessel(String($0)) }
+        let segmente = spalte.split(whereSeparator: { $0 == "." || $0 == "/" }).map { Textnorm.schluessel(String($0)) }
         if segmente.count > 1, let letztes = segmente.last {
             let generisch = ["name", "value", "id", "number", "nr", "type", "bezeichnung", "text", "amount", "wert"]
             if !generisch.contains(letztes), let treffer = suche(letztes) { return (treffer, 2) }
@@ -91,7 +91,7 @@ public enum Zielfeld: String, CaseIterable, Codable, Sendable, Identifiable {
 
     private static func suche(_ k: String) -> Zielfeld? {
         for feld in Zielfeld.allCases {
-            if let liste = synonyme[feld], liste.contains(where: { Text.schluessel($0) == k }) { return feld }
+            if let liste = synonyme[feld], liste.contains(where: { Textnorm.schluessel($0) == k }) { return feld }
         }
         return nil
     }

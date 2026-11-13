@@ -47,8 +47,8 @@ public enum Dokumenterkennung {
                 if let letzteLuecke = nummer.lastIndex(of: " "), nummer[nummer.index(after: letzteLuecke)...].allSatisfy(\.isLetter) {
                     nummer = String(nummer[..<letzteLuecke])
                 }
-                let n = Text.vertragsnummer(nummer)
-                if n.count >= 5, n.contains(where: \.isNumber), !ergebnis.contains(where: { Text.vertragsnummer($0) == n }) {
+                let n = Textnorm.vertragsnummer(nummer)
+                if n.count >= 5, n.contains(where: \.isNumber), !ergebnis.contains(where: { Textnorm.vertragsnummer($0) == n }) {
                     ergebnis.append(nummer)
                 }
             }
@@ -57,7 +57,7 @@ public enum Dokumenterkennung {
     }
 
     public static func typ(in text: String) -> DokumentTyp {
-        let t = Text.schluessel(text.prefix(3000).description)
+        let t = Textnorm.schluessel(text.prefix(3000).description)
         if t.contains("jahresbescheinigung") || t.contains("bescheinigungfuerdasfinanzamt") || t.contains("steuerbescheinigung")
             || t.contains("vorlagebeimfinanzamt") || t.contains("beitragsbescheinigung") {
             return .jahresbescheinigung
@@ -102,8 +102,8 @@ public enum Dokumenterkennung {
         var id = ZahlungsZuordnung.vertrag(fuer: text, in: vertraege)
         if id == nil {
             for k in kandidaten {
-                let n = Text.vertragsnummer(k)
-                let passende = vertraege.filter { Text.vertragsnummer($0.vertragsnummer) == n }
+                let n = Textnorm.vertragsnummer(k)
+                let passende = vertraege.filter { Textnorm.vertragsnummer($0.vertragsnummer) == n }
                 if passende.count == 1 { id = passende[0].id; break }
             }
         }

@@ -215,7 +215,7 @@ public enum PayImport {
     /// Liest NWO-Pay (`pay_id;konto;art;datum;richtung;betrag;gegenpartei;zweck;…`).
     public static func lesen(_ daten: Data, dateiname: String = "nwo-pay.csv") throws -> (zahlungen: [ZahlungsDaten], warnungen: [(zeile: Int, text: String)]) {
         let tabelle = try CSV.tabelle(aus: daten)
-        let index = Dictionary(tabelle.kopf.enumerated().map { (Text.schluessel($1), $0) }, uniquingKeysWith: { a, _ in a })
+        let index = Dictionary(tabelle.kopf.enumerated().map { (Textnorm.schluessel($1), $0) }, uniquingKeysWith: { a, _ in a })
         func wert(_ zeile: [String], _ namen: String...) -> String {
             for n in namen { if let i = index[n], i < zeile.count { return zeile[i].trimmingCharacters(in: .whitespaces) } }
             return ""
@@ -230,7 +230,7 @@ public enum PayImport {
             guard var betrag = Zahl.lesen(wert(zeile, "betrag", "amount")) else {
                 warnungen.append((nr, "Betrag fehlt oder ist unlesbar")); continue
             }
-            let richtung = Text.schluessel(wert(zeile, "richtung", "direction"))
+            let richtung = Textnorm.schluessel(wert(zeile, "richtung", "direction"))
             let ausgang = ["aus", "ausgang", "ausgabe", "soll", "out", "debit", "lastschrift", "s"].contains(richtung)
             let eingang = ["ein", "eingang", "einnahme", "haben", "in", "credit", "gutschrift", "h"].contains(richtung)
             if ausgang { betrag = -abs(betrag) } else if eingang { betrag = abs(betrag) }
@@ -258,11 +258,11 @@ public enum ZahlungsZuordnung {
     /// Sucht die Vertragsnummer im Buchungstext. Trennzeichen und Leerzeichen werden ignoriert.
     /// Bei mehreren Treffern gewinnt die längste Nummer; gleich lange Treffer gelten als mehrdeutig (nil).
     public static func vertrag(fuer buchungstext: String, in vertraege: [VertragsDaten]) -> UUID? {
-        let text = Text.vertragsnummer(buchungstext)
+        let text = Textnorm.vertragsnummer(buchungstext)
         guard !text.isEmpty else { return nil }
         var treffer: [(UUID, Int)] = []
         for v in vertraege {
-            let nr = Text.vertragsnummer(v.vertragsnummer)
+            let nr = Textnorm.vertragsnummer(v.vertragsnummer)
             guard nr.count >= mindestlaenge else { continue }
             if enthaeltAlsGanzes(text: text, nummer: nr, roh: buchungstext) { treffer.append((v.id, nr.count)) }
         }
