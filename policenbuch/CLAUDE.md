@@ -45,7 +45,7 @@ Native macOS-App für Norberts **private** Versicherungsverwaltung.
 
 ## Stand (13.11.2026)
 
-- Fachkern `PolicenbuchKern`: 47 Tests grün (Swift 6.2, Linux).
-- App-Schicht (SwiftUI/SwiftData/Vision) wurde in der Cloud-Sitzung ohne Xcode geschrieben und ist **noch nicht kompiliert**.
-  Erster Schritt auf dem Mac: `xcodebuild … test` ausführen und Compilerfehler beheben, danach die App mit erfundenen Daten
-  aus `PolicenbuchKern/Tests/PolicenbuchKernTests/Testdaten` durchklicken.
+- Fachkern `PolicenbuchKern`: 47 Tests grün (Linux und macOS 15).
+- App: baut mit Xcode 16.4 (Debug und Release), 6 App-Tests grün (GitHub-Workflow `Policenbuch (macOS)`).
+- Noch offen: die App mit erfundenen Daten aus `PolicenbuchKern/Tests/PolicenbuchKernTests/Testdaten` durchklicken
+  (Oberfläche, OCR, Mitteilungen sind nicht automatisiert getestet).

@@ -48,7 +48,7 @@ struct VertragDetailView: View {
             VertragEditor(titel: "Vertrag bearbeiten", daten: vertrag.daten) { d in
                 vertrag.uebernehmen(d)
                 try? kontext.save()
-                try? ImportDienst.zahlungenZuordnen(kontext: kontext)
+                _ = try? ImportDienst.zahlungenZuordnen(kontext: kontext)
             }
         }
     }
