@@ -1,0 +1,47 @@
+{
+  "name": "wallet-werkbank",
+  "productName": "Wallet-Werkbank",
+  "version": "1.0.0",
+  "description": "KI-Werkbank für Apple-Wallet-Karten",
+  "main": "main.js",
+  "author": "Norbert Wolff",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "prepare-app": "node prepare.mjs",
+    "start": "npm run prepare-app && electron .",
+    "dist": "npm run prepare-app && electron-builder --mac dmg --arm64 --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.1.0",
+    "electron-builder": "26.18.1"
+  },
+  "build": {
+    "appId": "de.nwo.wallet-werkbank",
+    "productName": "Wallet-Werkbank",
+    "copyright": "© 2026 Norbert Wolff",
+    "files": ["main.js", "package.json", "app/**/*"],
+    "directories": { "output": "dist", "buildResources": "build" },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true,
+      "minimumSystemVersion": "12.0",
+      "fileAssociations": [
+        { "ext": "eml", "name": "E-Mail", "role": "Viewer", "rank": "Alternate" },
+        { "ext": "ics", "name": "Kalenderdatei", "role": "Viewer", "rank": "Alternate" },
+        { "ext": "pkpass", "name": "Wallet-Karte", "role": "Viewer", "rank": "Alternate" }
+      ],
+      "extendInfo": {
+        "NSLocationWhenInUseUsageDescription": "Für den Ort einer Wallet-Karte (Hinweis auf dem Sperrbildschirm)."
+      }
+    },
+    "dmg": {
+      "title": "Wallet-Werkbank",
+      "artifactName": "Wallet-Werkbank-${version}-${arch}.dmg"
+    }
+  }
+}
