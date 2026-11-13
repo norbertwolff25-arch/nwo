@@ -34,6 +34,9 @@ jobs:
         run: npm run dist
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          # electron-builder überspringt das Signieren sonst in Pull Requests.
+          # Hier wird nur ad-hoc signiert (identity "-"), ohne Zertifikat oder Geheimnis.
+          CSC_FOR_PULL_REQUEST: 'true'
 
       - name: Prüfen
         run: |
