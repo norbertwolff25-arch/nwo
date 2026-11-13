@@ -1974,6 +1974,17 @@ document.addEventListener('paste', e => {
   if (img && (!typing || el.id === 'dMail')) { e.preventDefault(); directMode('shot'); directFromImage(img); }
 });
 
+/* Übergabe von Dateien aus der Mac-App (Doppelklick, „Öffnen mit“, Dock, ⌘O) */
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', heic: 'image/heic', gif: 'image/gif', webp: 'image/webp', pdf: 'application/pdf', ics: 'text/calendar', vcf: 'text/vcard', eml: 'message/rfc822', pkpass: 'application/vnd.apple.pkpass', txt: 'text/plain' };
+window.werkbankOpen = async (name, b64) => {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const file = new File([binToU8(atob(b64))], name, { type: MIME[ext] || 'application/octet-stream' });
+  if (ext === 'eml') { directMode('mail'); return directFromMail(await file.text(), name); }
+  if (ext === 'ics') { directMode('termin'); return directFromEvents(parseICS(await file.text()), 'Datei ' + name); }
+  if (/^(png|jpe?g|heic|gif|webp|pdf)$/.test(ext)) { directMode('shot'); return directFromImage(file); }
+  showTab('eingang'); return handleFiles([file]);
+};
+
 /* Start */
 renderSettings(); renderCatalog(); renderAll(); hashImport();
 if (!window.JSZip || !window.forge || !window.qrcode || !window.jsQR) setTimeout(() => toast('Hinweis: Einige Bibliotheken fehlen (offline?). Export/QR eingeschränkt.', 5000), 600);

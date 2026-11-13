@@ -39,6 +39,15 @@ Ohne API-Schlüssel greifen Buchungsdaten, Codes und lokale Regeln; Texte aus Bi
 
 Der Reiter **Schnittstellen** enthält einen Katalog (Kalender, Mail, Tickets, Reisen, Mitgliedschaften, Wallet-Erzeugung, Automatisierung) mit Zugangsart und Browser-Tauglichkeit. „Recherchieren“ lässt Claude mit Websuche aktuelle APIs, Feeds und Wallet-Angebote eines Anbieters finden.
 
+## Mac-App (DMG)
+
+Der Ordner [`mac/`](mac/) macht aus der Werkbank eine eigenständige Mac-App (Electron). Die Bibliotheken sind eingebaut, die App startet also auch offline. `.eml`, `.ics` und `.pkpass` lassen sich per „Öffnen mit“, aufs Dock-Symbol ziehen oder mit ⌘O übergeben; Mails, Termine und Bilder werden dabei direkt zu Karten. Exportierte Karten zeigt die App im Finder, von dort per AirDrop ans iPhone.
+
+- **DMG herunterladen:** GitHub → Actions → „Mac-App (DMG)“ → letzter Lauf → Artefakt `Wallet-Werkbank-DMG`. Darin je ein DMG für Apple Silicon (`arm64`) und Intel (`x64`).
+- **Erster Start:** Die App ist nur ad-hoc signiert (kein Apple-Entwicklerzertifikat). macOS meldet deshalb, dass der Entwickler nicht überprüft werden kann. Einmal öffnen versuchen, dann Systemeinstellungen → Datenschutz & Sicherheit → „Dennoch öffnen“. Alternativ im Terminal: `xattr -dr com.apple.quarantine /Applications/Wallet-Werkbank.app`.
+- **Selbst bauen (auf einem Mac):** `cd mac && npm ci && npm run dist` → `mac/dist/*.dmg`. Zum Ausprobieren ohne DMG: `npm start`.
+- Der Workflow [`.github/workflows/mac-app.yml`](.github/workflows/mac-app.yml) baut bei jeder Änderung an Werkbank oder App auf einem macOS-Runner, prüft Signatur und DMG und startet die App einmal zur Probe.
+
 ## Technik
 
 - Claude Messages API direkt aus dem Browser (`anthropic-dangerous-direct-browser-access`), Standardmodell `claude-opus-5-5`, strukturierte Ausgabe per JSON-Schema, Websuche als Server-Tool, optionale Ausweichmodelle bei Ablehnung.

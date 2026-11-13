@@ -1,0 +1,61 @@
+name: Mac-App (DMG)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['wallet-werkbank.html', 'mac/**', '.github/workflows/mac-app.yml']
+  pull_request:
+    paths: ['wallet-werkbank.html', 'mac/**', '.github/workflows/mac-app.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  dmg:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mac
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mac/package-lock.json
+
+      - name: Abhängigkeiten
+        run: npm ci --no-audit --no-fund
+
+      - name: DMG bauen (Apple Silicon und Intel, ad-hoc signiert)
+        run: npm run dist
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Prüfen
+        run: |
+          ls -lh dist/*.dmg
+          for app in dist/mac-arm64/Wallet-Werkbank.app dist/mac/Wallet-Werkbank.app; do
+            codesign --verify --deep --strict --verbose=2 "$app"
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/Info.plist"
+            test -f "$app/Contents/Resources/app.asar"
+          done
+          for dmg in dist/*.dmg; do hdiutil verify "$dmg"; done
+
+      - name: Starttest (Apple Silicon)
+        run: |
+          app="dist/mac-arm64/Wallet-Werkbank.app/Contents/MacOS/Wallet-Werkbank"
+          "$app" & pid=$!
+          sleep 15
+          kill -0 "$pid"
+          kill "$pid"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Wallet-Werkbank-DMG
+          path: mac/dist/*.dmg
+          if-no-files-found: error
+          retention-days: 30
