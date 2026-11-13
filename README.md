@@ -52,3 +52,9 @@ Der Ordner [`mac/`](mac/) macht aus der Werkbank eine eigenständige Mac-App (El
 
 - Claude Messages API direkt aus dem Browser (`anthropic-dangerous-direct-browser-access`), Standardmodell `claude-opus-5-5`, strukturierte Ausgabe per JSON-Schema, Websuche als Server-Tool, optionale Ausweichmodelle bei Ablehnung.
 - Bibliotheken von cdnjs/jsDelivr: JSZip (Paket), node-forge (PKCS#7-Signatur), qrcode-generator (QR-Code), jsQR (QR-Codes in Bildern lesen).
+
+---
+
+# Reisemanager
+
+Im Ordner [`reisemanager/`](reisemanager/) entsteht eine lokale macOS-App für Dienstreisen und Sachkosten. Stand und Bedienung stehen in der [README dort](reisemanager/README.md).

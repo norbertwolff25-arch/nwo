@@ -1,0 +1,13 @@
+.build/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+# Persönliche Daten bleiben lokal
+lokal/
+einstellungen.json
+startbestand*.json
+ereignisse*.json
+concur-bestand*.json
+seite*.json
+node_modules/
+!beispiel/*.json
