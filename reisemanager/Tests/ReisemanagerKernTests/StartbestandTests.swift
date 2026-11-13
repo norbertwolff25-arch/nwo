@@ -170,7 +170,7 @@ final class StartbestandTests: XCTestCase {
         let nochmal = try BelegordnerImport.importiere(ordner: ordner.path, in: db)
         XCTAssertEqual(nochmal.neu, 0)
         XCTAssertEqual(nochmal.bekannt, 3)
-        XCTAssertEqual(BelegordnerImport.belegnummern(imDateinamen: "B28_B29_Southern_Buchung_B30.pdf"), ["B28", "B29"])
-        XCTAssertEqual(BelegordnerImport.belegnummern(imDateinamen: "Reisen_2026_v19.xlsx"), [])
+        XCTAssertEqual(BelegordnerImport.belegnummern(imDateinamen: "B28_B29_Bahn_Buchung_B30.pdf"), ["B28", "B29"])
+        XCTAssertEqual(BelegordnerImport.belegnummern(imDateinamen: "Reisen_2026.xlsx"), [])
     }
 }
