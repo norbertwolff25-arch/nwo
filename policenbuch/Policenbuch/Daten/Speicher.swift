@@ -3,7 +3,7 @@ import SwiftData
 
 /// Lokaler Speicherort. Kein CloudKit, kein Server: Die Konfiguration schaltet die Cloud-Datenbank ausdrücklich ab.
 enum Speicher {
-    static let schema = Schema([Vertrag.self, Zahlung.self, Dokument.self, Aufgabe.self])
+    static var schema: Schema { Schema([Vertrag.self, Zahlung.self, Dokument.self, Aufgabe.self]) }
 
     /// ~/Library/Application Support/Policenbuch
     static var ordner: URL {
