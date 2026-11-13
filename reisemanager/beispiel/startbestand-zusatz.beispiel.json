@@ -1,0 +1,15 @@
+{
+  "jahr": 2026,
+  "quelle": "Concur-Entwürfe und offene Punkte (Beispiel)",
+  "concur": [
+    { "nr": "D01", "titel": "Messe Musterstadt 12.-14.03.26", "concurNr": "ABC123" },
+    { "nr": "S1", "titel": "Sachkosten Tanken 2026", "concurNr": null, "hinweis": "Nummer nachtragen" }
+  ],
+  "regeln": [
+    { "feld": "anlass", "muster": "Musterstadt", "aktion": "stammeinsatz", "wert": "Stammkunde" }
+  ],
+  "offenePunkte": [
+    { "bezug": "D01", "text": "Hotelrechnung herunterladen", "fundort": "Hotelportal → Rechnungen" },
+    { "text": "Reiseverläufe mit Uhrzeiten nachtragen", "fundort": "bahn.de → Meine Reisen" }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "jahr": 2026,
+  "privatadresse": { "strasse": "Musterweg 1", "plz": "00000", "ort": "Musterstadt" },
+  "concur": {
+    "anmeldung": "vorname.nachname@firma.example",
+    "instanz": "https://eu2.concursolutions.com",
+    "logicalSystem": "<Logical System>",
+    "companyCode": "<Company Code>",
+    "businessArea": "<Business Area>",
+    "costObjectType": "<Cost Object Type>",
+    "costObjectId": "<Cost Object ID>"
+  },
+  "belegordner": "~/Pfad/zum/Belegordner",
+  "wiedervorlageTage": 30
+}

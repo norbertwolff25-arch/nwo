@@ -1,0 +1,9 @@
+.build/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+# Persönliche Daten bleiben lokal
+lokal/
+einstellungen.json
+startbestand*.json
+!beispiel/*.json
