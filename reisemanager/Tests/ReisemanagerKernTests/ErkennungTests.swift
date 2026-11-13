@@ -18,7 +18,7 @@ final class ErkennungTests: XCTestCase {
                   zahlung: String? = nil, quelle: String? = "Amex", ort: String? = nil, sachkosten: String? = nil, fremd: Int? = nil) throws -> Position {
         var p = Position(id: nil, reiseId: reiseId, sachkostenId: sachkosten, datum: t(datum), quelle: quelle, kostenart: art, kostenartText: nil,
                          haendler: haendler, ort: ort, betragCent: cent, fremdbetragCent: fremd, fremdwaehrung: fremd == nil ? nil : "GBP",
-                         zahlungId: zahlung, privatVorgestreckt: true, erstattung: .offen, vorauskauf: false, belegHinweis: nil, vorschlag: nil)
+                         zahlungId: zahlung, privatVorgestreckt: true, erstattung: .offen, vorauskauf: false, belegHinweis: nil, vorschlag: nil, concurErfasstIn: nil)
         try p.insert(d)
         return p
     }

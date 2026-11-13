@@ -203,7 +203,7 @@ public enum Zuordnung {
             id: nil, reiseId: reise, sachkostenId: sachkosten, datum: z.datum, quelle: z.gepaartMitId == nil ? z.konto : "Amex+PayPal",
             kostenart: kostenart, kostenartText: nil, haendler: z.haendler, ort: nil, betragCent: z.betragCent.map { -$0 },
             fremdbetragCent: z.fremdbetragCent.map { abs($0) }, fremdwaehrung: z.fremdwaehrung, zahlungId: z.id, privatVorgestreckt: true,
-            erstattung: .offen, vorauskauf: vorauskauf, belegHinweis: nil, vorschlag: nil)
+            erstattung: .offen, vorauskauf: vorauskauf, belegHinweis: nil, vorschlag: nil, concurErfasstIn: nil)
         try position.insert(db)
     }
 }

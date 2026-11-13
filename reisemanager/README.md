@@ -2,7 +2,7 @@
 
 Lokale macOS-App für Dienstreisen und Sachkosten: Zahlungen und Belege einsammeln, Reisen erkennen, Belege zuordnen, Lücken finden und Abrechnungen in SAP Concur als Entwurf vorbereiten. Eingereicht wird nie von der App.
 
-**Stand: Etappe 4 von 5 – Oberfläche.** Es gibt den Kern als Swift-Paket, eine Kommandozeile und eine SwiftUI-App. Die Concur-Anbindung folgt.
+**Stand: Etappe 5 von 5 begonnen – Concur.** Es gibt den Kern als Swift-Paket, eine Kommandozeile, eine SwiftUI-App und den Concur-Teil bis zur Vorschau. Die Browserschritte gegen das echte Concur sind noch nicht abgebildet.
 
 > Die SwiftUI-App ist unter Linux geschrieben und dort nur auf Syntax geprüft. Der erste Bau auf dem Mac steht aus und kann Korrekturen brauchen. Kern und Kommandozeile sind gebaut und getestet.
 
@@ -16,6 +16,7 @@ Dieses Repository enthält nur Code und erfundene Testdaten. Privatadresse, Conc
 | `startbestand.json` | Reisen, Positionen, Sachkosten, Belegverzeichnis aus der Arbeitsmappe | entsteht mit `werkzeuge/mappe_zu_startbestand.py` |
 | `startbestand-zusatz.json` | Concur-Entwürfe, offene Punkte, persönliche Regeln | `beispiel/startbestand-zusatz.beispiel.json` |
 | `ereignisse.json` | Reiseverläufe mit Uhrzeiten, Hotelaufenthalte, Termine | `beispiel/ereignisse.beispiel.json` |
+| `concur-bestand.json` | gelesener Concur-Stand: Abrechnungen und verfügbare Ausgaben | `beispiel/concur-bestand.beispiel.json` |
 
 `.gitignore` schließt diese Dateien und die Datenbank aus. Kartennummern werden nie gespeichert, nur die letzten vier Ziffern.
 
@@ -91,6 +92,38 @@ swift run reisemanager bericht D10 D10.md     # Kurzbericht als Markdown
 
 Die Datenbank liegt unter `~/Library/Application Support/Reisemanager/reisemanager.sqlite`. Ein anderer Ort geht über `--db <Pfad>` oder `REISEMANAGER_DB`. Jeder Import darf wiederholt werden, bekannte Einträge entstehen nicht doppelt.
 
+## Concur
+
+Die App legt in Concur nur Entwürfe an und reicht nie ein. Die Anmeldung machst immer du.
+
+```sh
+swift run reisemanager import concur lokal/concur-bestand.json   # gelesenen Concur-Stand übernehmen
+swift run reisemanager concur abgleich                           # eigene Positionen gegen Concur
+swift run reisemanager concur plan D05                           # Vorschau der Schreibvorgänge, schreibt nichts
+```
+
+Feste Regeln, alle durch Tests belegt:
+
+- **Kein Senden:** Die Schnittstelle `ConcurZugang` kennt nur Lesen und einzelne Schreibschritte. Einen Schritt „senden“ gibt es nicht.
+- **Erst abgleichen:** Ohne gelesenen Concur-Stand ist jeder Plan gesperrt. Positionen, die schon in einer anderen Abrechnung stehen, etwa in „Ausgaben im Juli“, werden nicht noch einmal erfasst. Verfügbare Ausgaben werden zugeordnet statt neu angelegt.
+- **Kein zweiter Entwurf:** Fehlt lokal die Concur-Nummer und liegt in Concur ein Entwurf mit demselben Titel, wird dessen Nummer übernommen.
+- **Vorschau vor dem Schreiben:** Geschrieben wird nur ein Plan, dessen Vorschau bestätigt ist. Ändert sich der Plan, braucht er eine neue Bestätigung, außer im Modus „Stapel“.
+- **Löschen** läuft nie über einen Plan, sondern nur einzeln mit ausdrücklicher Bestätigung.
+- **Nichts geraten:** Die Namen der Concur-Ausgabentypen stehen in `einstellungen.json` unter `ausgabentypen`. Fehlt einer, ist der Plan gesperrt.
+
+### Browserzugang (`concur/`)
+
+```sh
+cd concur && npm install && npx playwright install chromium
+npm test                                   # Schutzregeln an einer nachgestellten Seite
+node concur.js anmelden                    # öffnet EU2 und wartet auf deine Anmeldung
+node concur.js erkunden seite.json         # nimmt die Bedienelemente einer Seite auf, ohne Feldinhalte
+```
+
+Das Skript klickt nie auf Senden oder Einreichen und füllt nie Passwort- oder MFA-Felder. Es nutzt ein eigenes Browserprofil unter `~/Library/Application Support/Reisemanager/concur-profil`.
+
+Noch offen: Lesen der Abrechnungen und die Schreibschritte in der echten Concur-Oberfläche. Dafür müssen die Seiten einmal mit `erkunden` aufgenommen werden. Auswahlpfade werden nicht geraten.
+
 ## Was der Kern kann
 
 - **Datenmodell** (SQLite über GRDB): Zahlung mit allen Fundstellen, Reise, Reiseabschnitt, Position, Sachkostenabrechnung, Beleg, Belegbild, Regel, Entscheidung, offener Punkt.
@@ -108,6 +141,7 @@ Die Datenbank liegt unter `~/Library/Application Support/Reisemanager/reisemanag
 - **Wiedervorlage:** Hinweis bei Reisen, die länger als die Frist beendet und nicht eingereicht sind.
 - **Lesesicht und Bearbeitung** für die Oberfläche: Dashboard-Zeilen, Reisedetail, Position verschieben, Status setzen, offene Punkte erledigen. Jede Änderung wird protokolliert.
 - **Kurzbericht** je Reise als Markdown mit Reisedaten, Positionen, Befunden, Besorgungsliste und offenen Punkten.
+- **Concur:** Abgleich mit bestehenden Abrechnungen und verfügbaren Ausgaben, Plan als Vorschau, Freigabe, Ausführung über eine gekapselte Schnittstelle mit Protokoll.
 - **Summen** je Reise im Aufbau der Arbeitsmappe (Fahrt, Unterkunft, Sonstiges). Privatreisen gehen in keine Summe ein.
 
 Grundsatz: keine erfundenen Werte. Unlesbare Zeilen meldet der Import mit Zeilennummer, fehlende Beträge bleiben leer und zählen als offene Punkte.
@@ -117,6 +151,7 @@ Grundsatz: keine erfundenen Werte. Unlesbare Zeilen meldet der Import mit Zeilen
 - PayPal-Export: Die Spaltennamen folgen dem deutschen Standardexport. Die Zuordnung der Euro-Beträge über die Zeilen „Währungsumrechnung“ ist nur mit erfundenen Daten getestet.
 - Amex-Fremdwährung: gelesen wird das Muster „Foreign Spend Amount: … Commission Amount: …“ aus der Spalte „Weitere Details“.
 - Die SwiftUI-App: nicht gebaut, nicht gestartet.
+- Concur: kein Schritt lief gegen das echte Concur. Die Ausführung ist nur gegen einen nachgestellten Zugang getestet.
 - Zuordnungsvorschläge gegen die echte Zahlungsdatenbank. Die Händlererkennung arbeitet mit einer Wortliste und wird an den echten Daten nachzuschärfen sein.
 - Texterkennung der Belegbilder (Apple Vision) kommt mit der Oberfläche, weil sie nur auf dem Mac läuft.
 
@@ -132,10 +167,12 @@ Sources/ReisemanagerKern/   Kern ohne Oberfläche
   Erkennung/                Vorbelegung, Zuordnungsvorschläge
   Pruefung/                 Plausi-Prüfer
   Ansicht/                  Lesesicht, Bearbeitung und Bericht für die Oberfläche
+  Concur/                   Abgleich, Plan, Freigabe, Ausführung, Schnittstelle
   Auswertung/               Summen
 Sources/reisemanager/       Kommandozeile
 Sources/ReisemanagerApp/    SwiftUI-App (nur macOS)
 Tests/                      Tests mit erfundenen Daten
+concur/                     Browserzugang mit Playwright (nur macOS) und seine Tests
 werkzeuge/                  Python-Hilfsskript, zusätzlich als .txt-Lesefassung
 beispiel/                   Vorlagen für die lokalen Dateien
 ```

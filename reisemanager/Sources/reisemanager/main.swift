@@ -13,6 +13,7 @@ reisemanager [--db <Pfad>] <Befehl>
   import startbestand <Datei.json> [...]    Startbestand (Mappe, Concur-Entwürfe, offene Punkte)
   import belege <Ordner>                    Belegbilder aus dem Belegordner
   import ereignisse <Datei.json>            Reiseverläufe, Hotelaufenthalte, Termine
+  import concur <Bestand.json>              gelesener Concur-Stand: Abrechnungen und verfügbare Ausgaben
   paaren                                    PayPal mit Amex-Finanzierung paaren
   erkennen                                  Beginn und Ende vorbelegen, Zahlungen zuordnen (nur Vorschläge)
   vorschlaege                               offene Zuordnungsvorschläge
@@ -22,6 +23,8 @@ reisemanager [--db <Pfad>] <Befehl>
   antwort <Schlüssel> <Nr>                  Nachfrage beantworten
   besorgen                                  Liste „Was ich noch besorgen muss“ nach Fundort
   bericht <Reise> [Datei.md]                Kurzbericht als Markdown
+  concur abgleich                           eigene Positionen gegen den Concur-Stand
+  concur plan <Reise>                       Vorschau der Schreibvorgänge (schreibt nichts)
   status                                    Reisen, Sachkosten, Summen, offene Punkte
 
 Datenbank: --db, sonst $REISEMANAGER_DB, sonst ~/Library/Application Support/Reisemanager/reisemanager.sqlite
@@ -81,6 +84,7 @@ do {
             case "startbestand": ergebnis = try StartbestandImport.importiere(datei: quelle, in: datenbank)
             case "belege": ergebnis = try BelegordnerImport.importiere(ordner: quelle, in: datenbank)
             case "ereignisse": ergebnis = try EreignisImport.importiere(datei: quelle, in: datenbank)
+            case "concur": ergebnis = try ConcurBestand.laden(datei: quelle).uebernehmen(in: datenbank)
             default: beenden("Unbekannte Importart: \(art)\n\n\(hilfe)")
             }
             print("\(URL(fileURLWithPath: quelle).lastPathComponent): \(ergebnis.zusammenfassung)")
@@ -154,6 +158,33 @@ do {
         for fundort in jeFundort.keys.sorted() {
             print("\n\(fundort)")
             for eintrag in jeFundort[fundort]! { print("  \(links(eintrag.bezug, 4)) \(eintrag.text)") }
+        }
+    case "concur":
+        guard argumente.count >= 2 else { beenden(hilfe) }
+        switch argumente[1] {
+        case "abgleich":
+            let eintraege = try ConcurAbgleich.abgleichen(in: datenbank)
+            let zaehlung = Dictionary(grouping: eintraege, by: \.art).mapValues(\.count)
+            print("Abgleich: \(zaehlung[.neu] ?? 0) neu, \(zaehlung[.schonErfasst] ?? 0) schon erfasst, \(zaehlung[.verfuegbareAusgabe] ?? 0) als verfügbare Ausgabe, \(zaehlung[.inAndererAbrechnung] ?? 0) in anderer Abrechnung, \(zaehlung[.ohneBetrag] ?? 0) ohne Betrag")
+            for eintrag in eintraege where eintrag.art == .inAndererAbrechnung || eintrag.art == .verfuegbareAusgabe {
+                print("  \(links(eintrag.bezug, 4)) \(eintrag.text)")
+            }
+        case "plan":
+            guard argumente.count >= 3 else { beenden(hilfe) }
+            let plan = try ConcurPlanung.plan(in: datenbank, bezug: argumente[2], einstellungen: einstellungen)
+            print("Vorschau \(plan.bezug) „\(plan.titel)“  Concur: \(plan.concurNr ?? "neu anzulegen")")
+            print("Es wird nichts geschrieben. Die App legt nur Entwürfe an und reicht nie ein.")
+            for (index, schritt) in plan.schritte.enumerated() {
+                print("  \(rechts(String(index + 1), 2)). \(schritt.beschreibung)")
+                for feld in schritt.felder where schritt.art == .kopfAnlegen || schritt.art == .reiseverlaufSetzen {
+                    print("        \(links(feld.name, 18)) \(feld.wert)")
+                }
+            }
+            if plan.schritte.isEmpty { print("  Nichts zu schreiben.") }
+            for hinweis in plan.hinweise { print("  Hinweis: \(hinweis)") }
+            for grund in plan.blocker { print("  Vorher klären: \(grund)") }
+        default:
+            beenden(hilfe)
         }
     case "bericht":
         guard argumente.count >= 2 else { beenden(hilfe) }

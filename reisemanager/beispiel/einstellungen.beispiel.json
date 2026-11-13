@@ -11,5 +11,16 @@
     "costObjectId": "<Cost Object ID>"
   },
   "belegordner": "~/Pfad/zum/Belegordner",
-  "wiedervorlageTage": 30
+  "wiedervorlageTage": 30,
+  "ausgabentypen": {
+    "bahn": "<Concur-Ausgabentyp für Bahn>",
+    "flug": "<… für Flug>",
+    "hotel": "<… für Hotel>",
+    "taxi": "<… für Taxi>",
+    "oepnv": "<… für ÖPNV>",
+    "parken": "<… für Parken>",
+    "tanken": "<… für Kraftstoff>",
+    "paket": "<… für Pauschalreise>",
+    "sonstiges": "<… für Sonstiges>"
+  }
 }

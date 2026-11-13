@@ -187,6 +187,7 @@ struct Detailansicht: View {
                     }
                 }
                 Positionsliste(detail: detail)
+                if let plan = modell.concurPlan { Concurvorschau(plan: plan) }
                 if !detail.bericht.besorgen.isEmpty {
                     GroupBox("Was ich noch besorgen muss") {
                         VStack(alignment: .leading, spacing: 4) {
@@ -336,6 +337,30 @@ struct Positionsliste: View {
                 if detail.positionen.isEmpty { Text("Keine Positionen").foregroundStyle(.secondary).padding(6) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+/// Vorschau der Schreibvorgänge in Concur. Hier wird nichts geschrieben.
+struct Concurvorschau: View {
+    let plan: ConcurPlan
+
+    var body: some View {
+        GroupBox("Concur-Vorschau (nur Entwürfe, die App reicht nie ein)") {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(plan.concurNr.map { "Entwurf \($0): \(plan.titel)" } ?? "Neu anzulegen: \(plan.titel)").bold()
+                ForEach(Array(plan.schritte.enumerated()), id: \.offset) { index, schritt in
+                    Text("\(index + 1). \(schritt.beschreibung)")
+                }
+                if plan.schritte.isEmpty { Text("Nichts zu schreiben.").foregroundStyle(.secondary) }
+                ForEach(plan.hinweise, id: \.self) { hinweis in
+                    Text("Hinweis: \(hinweis)").foregroundStyle(.secondary)
+                }
+                ForEach(plan.blocker, id: \.self) { grund in
+                    Text("Vorher klären: \(grund)").foregroundStyle(.red)
+                }
+            }
+            .padding(6).frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

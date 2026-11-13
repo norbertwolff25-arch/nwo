@@ -198,6 +198,42 @@ public final class Datenbank {
                 t.column("regelId", .integer).references("regel", onDelete: .setNull)
             }
         }
+        m.registerMigration("v3") { db in
+            try db.alter(table: "position") { t in
+                t.add(column: "concurErfasstIn", .text)
+            }
+            try db.create(table: "concurAbrechnung") { t in
+                t.primaryKey("nr", .text)
+                t.column("titel", .text).notNull()
+                t.column("status", .text)
+                t.column("betragCent", .integer)
+                t.column("gelesenAm", .text)
+            }
+            try db.create(table: "concurPosition") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("abrechnungNr", .text).indexed().references("concurAbrechnung", onDelete: .cascade)
+                t.column("datum", .text)
+                t.column("ausgabentyp", .text)
+                t.column("lieferant", .text)
+                t.column("betragCent", .integer)
+                t.column("waehrung", .text)
+                t.column("hatBeleg", .boolean).notNull()
+            }
+            try db.create(table: "concurFreigabe") { t in
+                t.primaryKey("bezug", .text)
+                t.column("planHash", .text).notNull()
+                t.column("stapel", .boolean).notNull()
+                t.column("zeit", .text).notNull()
+            }
+            try db.create(table: "concurProtokoll") { t in
+                t.autoIncrementedPrimaryKey("id")
+                t.column("bezug", .text).notNull().indexed()
+                t.column("schritt", .text).notNull()
+                t.column("beschreibung", .text).notNull()
+                t.column("ergebnis", .text).notNull()
+                t.column("zeit", .text).notNull()
+            }
+        }
         return m
     }
 }

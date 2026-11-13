@@ -24,6 +24,9 @@ public struct Einstellungen: Codable, Equatable, Sendable {
     public var belegordner: String?
     /// Reisen, die länger nicht eingereicht sind, kommen in die Wiedervorlage.
     public var wiedervorlageTage: Int?
+    /// Concur-Ausgabentyp je Kostenart oder Händlerklasse, z. B. "hotel": "<Name in Concur>".
+    /// Die Namen hängen von der Concur-Einrichtung ab und werden deshalb nicht im Code geraten.
+    public var ausgabentypen: [String: String]?
 
     public static func laden(pfad: String) throws -> Einstellungen {
         try JSONDecoder().decode(Einstellungen.self, from: Data(contentsOf: URL(fileURLWithPath: pfad)))

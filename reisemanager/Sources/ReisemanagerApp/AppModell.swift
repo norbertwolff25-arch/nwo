@@ -16,6 +16,7 @@ enum Importart: String, CaseIterable, Identifiable {
     case paypal = "PayPal-Export (CSV)"
     case startbestand = "Startbestand (JSON)"
     case ereignisse = "Reiseverläufe, Hotels, Termine (JSON)"
+    case concur = "Concur-Stand (JSON)"
     case belege = "Belegordner"
     var id: String { rawValue }
 }
@@ -33,6 +34,7 @@ final class AppModell: ObservableObject {
     @Published var detail: Abrechnungsdetail?
     @Published var vorschlaege: [Vorschlagszeile] = []
     @Published var besorgen: [Besorgungsgruppe] = []
+    @Published var concurPlan: ConcurPlan?
     @Published var auswahl: Bereich? = .dashboard
     @Published var meldung: String?
     @Published var protokoll: [String] = []
@@ -74,8 +76,10 @@ final class AppModell: ObservableObject {
                 .map { Besorgungsgruppe(fundort: $0.fundort, eintraege: $0.eintraege) }
             if case .abrechnung(let bezug) = auswahl {
                 detail = try Ansicht.detail(in: datenbank, bezug: bezug, einstellungen: einstellungen, heute: heute)
+                concurPlan = try? ConcurPlanung.plan(in: datenbank, bezug: bezug, einstellungen: einstellungen)
             } else {
                 detail = nil
+                concurPlan = nil
             }
         } catch {
             meldung = "\(error)"
@@ -135,6 +139,7 @@ final class AppModell: ObservableObject {
                 case .startbestand: ergebnis = try StartbestandImport.importiere(datei: url.path, in: datenbank)
                 case .ereignisse: ergebnis = try EreignisImport.importiere(datei: url.path, in: datenbank)
                 case .belege: ergebnis = try BelegordnerImport.importiere(ordner: url.path, in: datenbank)
+                case .concur: ergebnis = try ConcurBestand.laden(datei: url.path).uebernehmen(in: datenbank)
                 }
                 protokoll.append("\(url.lastPathComponent): \(ergebnis.zusammenfassung)")
                 protokoll.append(contentsOf: ergebnis.fehler.map { "  ! \($0)" })

@@ -213,7 +213,7 @@ public enum StartbestandImport {
             kostenart: eintrag.kostenart, kostenartText: Textnorm.leerAlsNil(eintrag.kostenartText), haendler: eintrag.haendler,
             ort: Textnorm.leerAlsNil(eintrag.ort), betragCent: eintrag.betragCent, fremdbetragCent: nil, fremdwaehrung: nil,
             zahlungId: Textnorm.leerAlsNil(eintrag.zahlungId), privatVorgestreckt: true, erstattung: .offen, vorauskauf: vorauskauf,
-            belegHinweis: Textnorm.leerAlsNil(eintrag.belegHinweis), vorschlag: Textnorm.leerAlsNil(eintrag.vorschlag))
+            belegHinweis: Textnorm.leerAlsNil(eintrag.belegHinweis), vorschlag: Textnorm.leerAlsNil(eintrag.vorschlag), concurErfasstIn: nil)
         try position.insert(db)
         ergebnis.neu += 1
         for nummer in eintrag.belege ?? [] {

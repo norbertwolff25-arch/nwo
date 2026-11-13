@@ -115,6 +115,8 @@ public struct Position: Codable, FetchableRecord, MutablePersistableRecord, Send
     public var belegHinweis: String?
     /// Vorschlag für noch nicht zugeordnete Posten, z. B. Uber/Bolt.
     public var vorschlag: String?
+    /// Nummer der Concur-Abrechnung, in der die Position erfasst ist.
+    public var concurErfasstIn: String?
     public mutating func didInsert(_ inserted: InsertionSuccess) { id = inserted.rowID }
 }
 

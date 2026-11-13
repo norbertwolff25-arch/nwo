@@ -1,0 +1,12 @@
+{
+  "gelesenAm": "2026-11-13",
+  "abrechnungen": [
+    { "nr": "ABC123", "titel": "Messe Musterstadt 12.-14.03.26", "status": "Entwurf", "betragCent": 15478,
+      "positionen": [ { "datum": "2026-02-20", "ausgabentyp": "Bahn", "lieferant": "Bahn Vertrieb", "betragCent": 15478, "waehrung": "EUR", "hatBeleg": true } ] },
+    { "nr": "MON007", "titel": "Ausgaben im Juli", "status": "Entwurf", "betragCent": 27960,
+      "positionen": [ { "datum": "2026-07-20", "ausgabentyp": "Hotel", "lieferant": "Hotel Muster", "betragCent": 27960, "waehrung": "EUR", "hatBeleg": false } ] }
+  ],
+  "verfuegbareAusgaben": [
+    { "datum": "2026-07-20", "lieferant": "Fahrdienst", "betragCent": 1290, "waehrung": "EUR", "hatBeleg": true }
+  ]
+}

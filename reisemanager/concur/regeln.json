@@ -1,0 +1,7 @@
+{
+  "verboteneBeschriftungen": [
+    "Abrechnung senden", "Abrechnung einreichen", "Senden", "Einreichen", "Submit Report", "Submit", "Akzeptieren und senden", "Accept & Submit"
+  ],
+  "anmeldepfade": ["signin", "login", "sso", "saml", "logout", "adfs", "oauth"],
+  "geheimeFelder": ["pass", "kennwort", "otp", "mfa", "code", "token", "pin"]
+}

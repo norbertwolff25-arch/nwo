@@ -1,0 +1,8 @@
+{
+  "name": "reisemanager-concur",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browserzugang zu SAP Concur für den Reisemanager: nur Entwürfe, nie senden",
+  "scripts": { "test": "node --test test.js" },
+  "dependencies": { "playwright": "^1.50.0" }
+}
