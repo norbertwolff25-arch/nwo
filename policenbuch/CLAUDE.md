@@ -42,3 +42,10 @@ Native macOS-App für Norberts **private** Versicherungsverwaltung.
 - Dubletten = gleiche normalisierte `vertragsnummer` + gleicher Versicherer; Konflikte nebeneinander zeigen.
 - Zahlungen werden über die Vertragsnummer im Verwendungszweck zugeordnet (Trennzeichen egal, mind. 5 Zeichen).
 - Exportfelder an GDV-/BiPRO-Begriffe angelehnt (Versicherungsscheinnummer, Sparte, Beitrag, Zahlungsweise).
+
+## Stand (13.11.2026)
+
+- Fachkern `PolicenbuchKern`: 47 Tests grün (Swift 6.2, Linux).
+- App-Schicht (SwiftUI/SwiftData/Vision) wurde in der Cloud-Sitzung ohne Xcode geschrieben und ist **noch nicht kompiliert**.
+  Erster Schritt auf dem Mac: `xcodebuild … test` ausführen und Compilerfehler beheben, danach die App mit erfundenen Daten
+  aus `PolicenbuchKern/Tests/PolicenbuchKernTests/Testdaten` durchklicken.
