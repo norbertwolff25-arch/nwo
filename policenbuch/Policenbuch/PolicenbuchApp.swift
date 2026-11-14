@@ -28,6 +28,8 @@ struct PolicenbuchApp: App {
             if let container {
                 InhaltView()
                     .modelContainer(container)
+                    // Deutsche Zahlen- und Datumsformate unabhängig von der Systemsprache
+                    .environment(\.locale, Locale(identifier: "de_DE"))
                     .frame(minWidth: 980, minHeight: 620)
             } else {
                 ContentUnavailableView("Datenbank nicht verfügbar",

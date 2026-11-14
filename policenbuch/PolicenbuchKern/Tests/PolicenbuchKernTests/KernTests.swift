@@ -640,3 +640,21 @@ struct SicherungTests {
         #expect(v.notizen == "Jahresbeitrag laut Quelle: 130,00 €")
     }
 }
+
+@Suite("Vorschläge: Namensähnlichkeit")
+struct VorschlagNamenTests {
+    @Test func gleichesErstesWortReichtNicht() {
+        let rs = VertragsDaten(versicherer: "Erfunden Rechtsschutz AG", sparte: "Rechtsschutz", vertragsnummer: "RS-1", beitrag: 312, zahlweise: .jaehrlich)
+        let z = ZahlungsDaten(datum: tag(2026, 5, 20), betrag: -59, buchungstext: "Erfunden Tier AG – Jahresbeitrag Hund", quelle: "t")
+        #expect(ZahlungsZuordnung.vorschlaege(fuer: z, vertraege: [rs], zugeordnet: []).isEmpty)
+    }
+
+    @Test func erstesWortPlusBetragReicht() {
+        let huk = VertragsDaten(versicherer: "HUK-COBURG Haftpflicht-Unterstützungs-Kasse", sparte: "Kfz", vertragsnummer: "K-1",
+                                beitrag: 412, zahlweise: .halbjaehrlich)
+        let z = ZahlungsDaten(datum: tag(2026, 1, 1), betrag: -412, buchungstext: "HUK-COBURG – Beitrag", quelle: "t")
+        let v = ZahlungsZuordnung.vorschlaege(fuer: z, vertraege: [huk], zugeordnet: [])
+        #expect(v.first?.punkte == 65)
+        #expect(v.first?.sicher == false)
+    }
+}

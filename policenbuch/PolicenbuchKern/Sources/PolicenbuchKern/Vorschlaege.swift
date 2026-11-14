@@ -29,9 +29,14 @@ extension ZahlungsZuordnung {
 
             // 1. Versicherer im Buchungstext
             let woerter = Textnorm.versichererSchluessel(v.versicherer).split(separator: " ").map(String.init).filter { $0.count >= 3 }
-            if let erstes = woerter.first, text.contains(erstes) {
+            // Alle Namensbestandteile: starkes Signal. Nur das erste Wort („Erfunden …“): schwach,
+            // reicht allein nicht für einen Vorschlag.
+            if !woerter.isEmpty, woerter.allSatisfy({ text.contains($0) }) {
                 punkte += 50
                 gruende.append("Versicherer „\(v.versicherer)“ im Buchungstext")
+            } else if let erstes = woerter.first, text.contains(erstes) {
+                punkte += 25
+                gruende.append("Namensteil „\(erstes)“ im Buchungstext")
             }
 
             // 2. Betrag passt zum Beitrag (nur Ausgänge)
