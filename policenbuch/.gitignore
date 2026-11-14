@@ -1,0 +1,11 @@
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+.DS_Store
+# Keine echten Daten ins Repository
+*.store
+*.store-shm
+*.store-wal
+Export/

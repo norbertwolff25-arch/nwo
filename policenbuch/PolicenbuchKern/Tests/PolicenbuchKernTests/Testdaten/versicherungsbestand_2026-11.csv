@@ -1,0 +1,6 @@
+﻿Versicherer;Sparte;Vertragsnummer;Tarif;Beginn;Ablauf;Kündigungsfrist;Beitrag;Zahlweise;Dynamik %;Status;Steuerliche Einordnung;Betreuer;Bemerkung;Kundenbetreuer Telefon
+Beispiel Leben AG;Rentenversicherung;LV-123.456.78;Basisrente Klassik;01.06.2008;01.06.2028;3 Monate;150,00;monatlich;5,0;aktiv;Schicht 1 (Basisrente);Clark;Kapitalauszahlung 06/2028;0201 123456
+Muster Sach SE;Hausrat;HR 998877;Komfort;15.03.2019;;3 Monate zum Ablauf;1.234,56;jährlich;;aktiv;Sonderausgaben nein;direkt;"Wohnung; inkl. Fahrrad";
+Fiktiv Kranken VVaG;Krankenzusatz;KZ-55501;Zahn 90;01.01.2021;;1 Monat;23,90;monatlich;;prüfen;Vorsorgeaufwand;Clark;;
+Muster Sach SE;Haftpflicht;PH-4711-22;Single;01.10.2015;;3 Monate;89,50;jährlich;;beitragsfrei;;neu;;
+Testversicherung;Unfall;;Basis;irgendwann;;;12,5;monatl.;;;;;Nummer fehlt;
