@@ -3,7 +3,7 @@ import Foundation
 /// Zielfelder eines Vertrags, auf die Quellspalten abgebildet werden können.
 public enum Zielfeld: String, CaseIterable, Codable, Sendable, Identifiable {
     case versicherer, sparte, vertragsnummer, tarif, beginn, ablauf, kuendigungsfrist
-    case beitrag, zahlweise, dynamikProzent, status, steuerlicheEinordnung, betreuer, notizen
+    case beitrag, jahresbeitrag, zahlweise, dynamikProzent, status, steuerlicheEinordnung, betreuer, notizen
     /// Feld bewusst nicht übernehmen (nur für Zugangsdaten u. Ä. gedacht).
     case ignorieren
 
@@ -19,6 +19,7 @@ public enum Zielfeld: String, CaseIterable, Codable, Sendable, Identifiable {
         case .ablauf: "Ablauf"
         case .kuendigungsfrist: "Kündigungsfrist"
         case .beitrag: "Beitrag"
+        case .jahresbeitrag: "Jahresbeitrag"
         case .zahlweise: "Zahlweise"
         case .dynamikProzent: "Dynamik (%)"
         case .status: "Status"
@@ -45,6 +46,7 @@ public enum Zielfeld: String, CaseIterable, Codable, Sendable, Identifiable {
         .ablauf: ["ablauf", "ablaufdatum", "vertragsende", "ende", "enddatum", "end", "enddate", "expiry", "expirydate",
                   "vertragsablauf", "laufzeitende", "contractend", "validuntil", "auszahlungsdatum", "maturitydate"],
         .kuendigungsfrist: ["kuendigungsfrist", "kuendigung", "noticeperiod", "cancellationperiod", "frist"],
+        .jahresbeitrag: ["jahresbeitrag", "jahrespraemie", "annualpremium", "beitragjaehrlich", "jahresbeitrageur"],
         .beitrag: ["beitrag", "beitrageur", "praemie", "premium", "betrag", "amount", "beitraginEUR", "zahlbeitrag",
                    "bruttobeitrag", "price", "preis", "kosten", "premiumamount"],
         .zahlweise: ["zahlweise", "zahlungsweise", "zahlungsintervall", "intervall", "paymentinterval", "paymentfrequency",
@@ -135,6 +137,7 @@ public struct Feldzuordnung: Codable, Sendable, Equatable {
         var v = VertragsDaten()
         var warnungen: [String] = []
         var statusGesetzt = false
+        var jahresbeitrag: Decimal? = nil
         var extraNotizen: [String] = []
 
         func merken(_ spalte: String, _ wert: String) {
@@ -159,6 +162,9 @@ public struct Feldzuordnung: Codable, Sendable, Equatable {
                     warnungen.append("\(spalte): Datum „\(wert)“ nicht lesbar")
                     merken(spalte, wert)
                 }
+            case .jahresbeitrag:
+                if let z = Zahl.lesen(wert, deutsch: deutscheZahlen) { jahresbeitrag = abs(z) }
+                else { merken(spalte, wert) }
             case .beitrag:
                 if let z = Zahl.lesen(wert, deutsch: deutscheZahlen) { v.beitrag = abs(z) }
                 else { warnungen.append("\(spalte): Betrag „\(wert)“ nicht lesbar"); merken(spalte, wert) }
@@ -180,6 +186,19 @@ public struct Feldzuordnung: Codable, Sendable, Equatable {
                 if Zielfeld.vorschlag(fuer: spalte) == .notizen { v.notizAnhaengen(wert) } else { merken(spalte, wert) }
             case .ignorieren:
                 break
+            }
+        }
+        if let jb = jahresbeitrag {
+            if v.beitrag == nil {
+                // Nur Jahresbeitrag bekannt: auf die Zahlweise umrechnen
+                if let n = v.zahlweise?.zahlungenProJahr, n > 0 {
+                    v.beitrag = Zahl.runden(jb / Decimal(n))
+                } else {
+                    v.beitrag = jb
+                    if v.zahlweise == nil { v.zahlweise = .jaehrlich }
+                }
+            } else if jb > 0, let b = v.beitrag, Zahl.runden(b * Decimal(v.zahlweise?.zahlungenProJahr ?? 1)) != Zahl.runden(jb) {
+                extraNotizen.append("Jahresbeitrag laut Quelle: \(Zahl.euro(jb))")
             }
         }
         for n in extraNotizen { v.notizAnhaengen(n) }

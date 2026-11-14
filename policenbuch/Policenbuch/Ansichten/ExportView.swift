@@ -6,8 +6,10 @@ import PolicenbuchKern
 struct ExportView: View {
     @Query(sort: \Vertrag.sparte) private var vertraege: [Vertrag]
     @Query private var dokumente: [Dokument]
+    @Environment(\.modelContext) private var kontext
     @State private var nurLaufende = true
     @State private var meldung: String?
+    @State private var wiederherstellung: Sicherung?
 
     private var auswahl: [Vertrag] {
         nurLaufende ? vertraege.filter { $0.status != .beendet } : vertraege
@@ -44,8 +46,28 @@ struct ExportView: View {
                     Button("ZIP sichern …") { zipSichern() }
                 }
             }
+            Section {
+                HStack {
+                    Label("Komplettsicherung (Verträge, Zahlungen, Dokumentliste mit Text, Aufgaben)", systemImage: "externaldrive")
+                    Spacer()
+                    Button("Sicherung erstellen …") {
+                        sichern(name: "Policenbuch_Sicherung_\(datum).json", typ: .json) {
+                            try ImportDienst.sicherung(kontext: kontext).json()
+                        }
+                    }
+                }
+                HStack {
+                    Label("Aus Sicherung wiederherstellen", systemImage: "clock.arrow.circlepath")
+                    Spacer()
+                    Button("Sicherung wählen …") { sicherungWaehlen() }
+                }
+            } header: {
+                Text("Sicherung")
+            } footer: {
+                Text("Die Sicherung ist eine lokale JSON-Datei. PDFs sind nicht enthalten, nur ihre Pfade. Wiederherstellen ersetzt alle Daten im Policenbuch.")
+            }
             if let meldung {
-                Section { Text(meldung) }
+                Section { Text(meldung).textSelection(.enabled) }
             }
             Section {
                 Text("Vor dem Versand prüfen: Die Notizen werden mit exportiert. Zugangsdaten speichert das Policenbuch nicht.")
@@ -53,7 +75,34 @@ struct ExportView: View {
             }
         }
         .formStyle(.grouped)
-        .navigationTitle("Export für Berater")
+        .navigationTitle("Export & Sicherung")
+        .confirmationDialog("Alle Daten durch die Sicherung ersetzen?", isPresented: Binding(
+            get: { wiederherstellung != nil }, set: { if !$0 { wiederherstellung = nil } })) {
+            Button("Ersetzen", role: .destructive) {
+                guard let s = wiederherstellung else { return }
+                do {
+                    try ImportDienst.wiederherstellen(s, kontext: kontext)
+                    meldung = "Wiederhergestellt: \(s.zusammenfassung) (Stand \(Datum.deutsch(s.erstellt)))"
+                } catch {
+                    meldung = "Fehler: \(error.localizedDescription)"
+                }
+                wiederherstellung = nil
+            }
+        } message: {
+            Text(wiederherstellung.map { "Die Sicherung vom \(Datum.deutsch($0.erstellt)) enthält \($0.zusammenfassung). Der aktuelle Bestand wird gelöscht." } ?? "")
+        }
+    }
+
+    private func sicherungWaehlen() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.json]
+        panel.allowsMultipleSelection = false
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            wiederherstellung = try Sicherung.lesen(try Data(contentsOf: url))
+        } catch {
+            meldung = "Fehler: \(error.localizedDescription)"
+        }
     }
 
     private var daten: [VertragsDaten] { auswahl.map(\.daten) }

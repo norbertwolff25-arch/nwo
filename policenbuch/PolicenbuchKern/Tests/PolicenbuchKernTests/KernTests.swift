@@ -529,3 +529,114 @@ struct ExportTests {
         #expect(Set(namen.values).count == 2)
     }
 }
+
+@Suite("Zuordnungsvorschläge")
+struct VorschlagTests {
+    func daten() throws -> ([VertragsDaten], [ZahlungsDaten]) {
+        let v = try BestandImport.lesen(try testdatei("versicherungsbestand_2026-11.csv")).vertraege
+        var (z, _) = try PayImport.lesen(try testdatei("nwo_pay_2026.csv"))
+        ZahlungsZuordnung.zuordnen(&z, vertraege: v)
+        return (v, z)
+    }
+
+    @Test func versichererUndBetrag() throws {
+        let (v, z) = try daten()
+        let offen = z[2] // Fiktiv Kranken – Beitrag 02/2026, 23,90
+        #expect(offen.vertragID == nil)
+        let vorschlaege = ZahlungsZuordnung.vorschlaege(fuer: offen, vertraege: v, zugeordnet: z)
+        let erster = try #require(vorschlaege.first)
+        #expect(erster.vertragID == v[2].id)
+        #expect(erster.sicher)
+        #expect(erster.punkte >= 90)
+        #expect(erster.gruende.contains { $0.contains("Beitrag") })
+    }
+
+    @Test func fremdeZahlungOhneVorschlag() throws {
+        let (v, z) = try daten()
+        #expect(ZahlungsZuordnung.vorschlaege(fuer: z[4], vertraege: v, zugeordnet: z).isEmpty)
+    }
+
+    @Test func historieZaehlt() {
+        let vertrag = VertragsDaten(versicherer: "Ganz Anders AG", vertragsnummer: "99999", beitrag: 30, zahlweise: .monatlich)
+        let alt = ZahlungsDaten(datum: tag(2026, 1, 1), betrag: -31, buchungstext: "GA Service GmbH – Lastschrift", quelle: "t", vertragID: vertrag.id)
+        let neu = ZahlungsDaten(datum: tag(2026, 2, 1), betrag: -31, buchungstext: "GA Service GmbH – Lastschrift", quelle: "t")
+        let v = ZahlungsZuordnung.vorschlaege(fuer: neu, vertraege: [vertrag], zugeordnet: [alt])
+        #expect(v.first?.punkte == 70) // Gegenpartei 30 + gleicher Betrag 20 + Betrag nahe Beitrag 20
+        #expect(v.first?.sicher == false)
+    }
+
+    @Test func zweiGleichstarkeSindNichtSicher() {
+        let a = VertragsDaten(versicherer: "Muster Sach SE", sparte: "Hausrat", vertragsnummer: "11111", beitrag: 10, zahlweise: .monatlich)
+        let b = VertragsDaten(versicherer: "Muster Sach SE", sparte: "Glas", vertragsnummer: "22222", beitrag: 10, zahlweise: .monatlich)
+        let z = ZahlungsDaten(datum: tag(2026, 1, 1), betrag: -10, buchungstext: "Muster Sach – Lastschrift", quelle: "t")
+        let v = ZahlungsZuordnung.vorschlaege(fuer: z, vertraege: [a, b], zugeordnet: [])
+        #expect(v.count == 2)
+        #expect(!v.contains { $0.sicher })
+    }
+}
+
+@Suite("Sicherung und Rückimport")
+struct SicherungTests {
+    @Test func rundreise() throws {
+        let v = VertragsDaten(versicherer: "X", vertragsnummer: "12345", beginn: tag(2020, 1, 1), beitrag: Decimal(string: "12.34"),
+                              zahlweise: .monatlich, notizen: "Ä Ö ü ß")
+        let z = ZahlungsDaten(externeID: "nwo-pay:1", datum: tag(2026, 1, 2), betrag: Decimal(string: "-12.34")!,
+                              buchungstext: "X – 12345", quelle: "NWO-Pay", vertragID: v.id)
+        let d = Sicherung.Dokument(daten: DokumentDaten(pfad: "/a/b.pdf", typ: .police, datum: tag(2020, 1, 1), vertragID: v.id),
+                                   erkannterText: "Versicherungsschein", kandidaten: "12345")
+        let a = AufgabeDaten(titel: "Kündigen?", faelligkeit: tag(2026, 12, 1), vertragID: v.id)
+        let s = Sicherung(erstellt: tag(2026, 11, 14), vertraege: [v], zahlungen: [z], dokumente: [d], aufgaben: [a])
+        let gelesen = try Sicherung.lesen(try s.json())
+        #expect(gelesen == s)
+        #expect(gelesen.zusammenfassung == "1 Verträge, 1 Zahlungen, 1 Dokumente, 1 Aufgaben")
+    }
+
+    @Test func fremdeDateiWirdAbgelehnt() {
+        #expect(throws: Sicherung.Fehler.keineSicherung) { _ = try Sicherung.lesen(Data("{\"a\":1}".utf8)) }
+    }
+
+    @Test func verwaisteVerweiseWerdenGeloest() throws {
+        let z = ZahlungsDaten(datum: tag(2026, 1, 2), betrag: -1, buchungstext: "", quelle: "", vertragID: UUID())
+        let s = Sicherung(erstellt: .now, vertraege: [], zahlungen: [z], dokumente: [], aufgaben: [])
+        #expect(try Sicherung.lesen(try s.json()).zahlungen[0].vertragID == nil)
+    }
+
+    let lv = VertragsDaten(versicherer: "Beispiel Leben AG", sparte: "Rentenversicherung", vertragsnummer: "LV-123.456.78",
+                           tarif: "Basisrente", beginn: tag(2008, 6, 1), ablauf: tag(2028, 6, 1), kuendigungsfrist: "3 Monate",
+                           beitrag: 150, zahlweise: .monatlich, dynamikProzent: 5, status: .beitragsfrei,
+                           steuerlicheEinordnung: "Schicht 1", betreuer: .neu, notizen: "Kapitalauszahlung")
+
+    func ohneID(_ v: VertragsDaten) -> VertragsDaten { var x = v; x.id = lv.id; return x }
+
+    @Test func jsonRueckimport() throws {
+        let json = try BeraterExport.json([lv], erstellt: tag(2026, 11, 14))
+        let e = try BeraterExport.vertraege(ausJSON: json, quelle: "vertraege.json")
+        #expect(ohneID(e.vertraege[0]) == lv)
+    }
+
+    @Test func csvRueckimportOhneRauschen() throws {
+        let csv = BeraterExport.csv([lv])
+        let e = try BestandImport.lesen(csv, dateiname: "Vertraege.csv")
+        #expect(ohneID(e.vertraege[0]) == lv)
+        #expect(e.warnungen.isEmpty)
+    }
+
+    @Test func nurJahresbeitragBekannt() {
+        let t = CSVTabelle(kopf: ["Versicherer", "VSNR", "Jahresbeitrag", "Zahlweise"], zeilen: [
+            ["A AG", "11111", "120,00", "monatlich"],
+            ["B AG", "22222", "89,50", ""]
+        ])
+        let v = BestandImport.lesen(t, quelle: "t").vertraege
+        #expect(v[0].beitrag == 10)
+        #expect(v[1].beitrag == Decimal(string: "89.5"))
+        #expect(v[1].zahlweise == .jaehrlich)
+    }
+
+    @Test func widerspruechlicherJahresbeitragWirdNotiert() {
+        let t = CSVTabelle(kopf: ["Versicherer", "VSNR", "Beitrag", "Zahlweise", "Jahresbeitrag"],
+                           zeilen: [["A AG", "11111", "10,00", "monatlich", "130,00"]])
+        let v = BestandImport.lesen(t, quelle: "t").vertraege[0]
+        #expect(v.beitrag == 10)
+        #expect(v.notizen == "Jahresbeitrag laut Quelle: 130,00 €")
+    }
+}

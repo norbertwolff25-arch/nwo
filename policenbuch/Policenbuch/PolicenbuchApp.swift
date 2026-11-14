@@ -8,7 +8,14 @@ struct PolicenbuchApp: App {
 
     init() {
         do {
-            container = try Speicher.container()
+            if let ordner = Demo.ausgabeordner {
+                // Demo: nur im Arbeitsspeicher, echter Bestand bleibt unberührt
+                let c = try Speicher.imSpeicher()
+                try Demo.befuellen(c.mainContext, dokumentordner: ordner.appendingPathComponent("Dokumente"))
+                container = c
+            } else {
+                container = try Speicher.container()
+            }
             fehler = nil
         } catch {
             container = nil

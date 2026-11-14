@@ -53,6 +53,14 @@ und unter `Application Support/Policenbuch` speichern.
 
 Nach jedem Vertragsimport werden offene Zahlungen und Dokumente neu zugeordnet.
 
+**Vorschläge für Zahlungen ohne Vertragsnummer** (Prüfliste) – Punkte für Versicherer im Buchungstext (50),
+Betrag = Beitrag (40, ±5 %: 20), gleiche Gegenpartei (30) bzw. gleicher Betrag (20) wie frühere Zahlungen des Vertrags.
+Nichts wird automatisch zugeordnet; „eindeutige Vorschläge übernehmen“ greift nur ab 80 Punkten mit 20 Punkten Abstand.
+
+**Rückimport**: Der eigene Export (`vertraege.csv` oder `vertraege.json`) lässt sich über „Versicherungsbestand“ wieder
+einlesen und läuft durch den Dublettenabgleich. Eine Spalte „Jahresbeitrag“ wird auf die Zahlweise umgerechnet,
+wenn kein Beitrag je Zahlung vorliegt.
+
 ## Ansichten
 
 - **Übersicht**: Jahresbeitrag gesamt und je Monat, Balkendiagramm und Tabelle nach Sparte.
@@ -68,6 +76,22 @@ Nach jedem Vertragsimport werden offene Zahlungen und Dokumente neu zugeordnet.
   Feldnamen: Versicherungsscheinnummer, Versicherer, Sparte, Tarif, Vertragsbeginn, Vertragsablauf, Kuendigungsfrist,
   Beitrag, Zahlungsweise, Jahresbeitrag, Waehrung, Dynamik_Prozent, Vertragsstatus, Steuerliche_Einordnung, Betreuer,
   Anzahl_Dokumente, Bemerkungen.
+
+## Sicherung
+
+„Export & Sicherung“ → *Sicherung erstellen* schreibt eine JSON-Datei mit Verträgen, Zahlungen, Dokumentliste
+(Pfad und erkannter Text) und Aufgaben. *Wiederherstellen* ersetzt nach Rückfrage den gesamten Bestand.
+Die PDFs selbst sind nicht enthalten.
+
+## Demo und Screenshots
+
+```sh
+Policenbuch.app/Contents/MacOS/Policenbuch -PolicenbuchDemo ~/Desktop/policenbuch-demo
+```
+
+startet mit erfundenen Daten in einem reinen Arbeitsspeicher-Store, erzeugt Test-PDFs, nimmt alle Ansichten
+und die Import-Dialoge als PNG auf und beendet sich. Der echte Bestand wird dabei nicht geöffnet.
+Der Workflow lädt diese Screenshots als Artefakt `Policenbuch-Screenshots` hoch.
 
 ## Datenschutz
 

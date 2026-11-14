@@ -15,7 +15,7 @@ enum Bereich: String, CaseIterable, Identifiable, Hashable {
         case .zahlungen: "Zahlungen"
         case .dokumente: "Dokumente"
         case .importieren: "Import"
-        case .exportieren: "Export für Berater"
+        case .exportieren: "Export & Sicherung"
         }
     }
 
@@ -50,6 +50,7 @@ final class Navigation {
 
 struct InhaltView: View {
     @State private var navigation = Navigation()
+    @Environment(\.modelContext) private var kontext
     @Query private var vertraege: [Vertrag]
     @Query(filter: #Predicate<Zahlung> { $0.vertrag == nil }) private var offeneZahlungen: [Zahlung]
 
@@ -83,6 +84,9 @@ struct InhaltView: View {
             }
         }
         .environment(navigation)
+        .task {
+            if Demo.aktiv { await Demo.ablauf(navigation: navigation, kontext: kontext) }
+        }
     }
 
     @ViewBuilder

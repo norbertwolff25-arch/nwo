@@ -9,6 +9,7 @@ struct PrueflisteView: View {
     @Query(sort: \Zahlung.datum, order: .reverse) private var zahlungen: [Zahlung]
     @Query(filter: #Predicate<Dokument> { $0.vertrag == nil }) private var dokumenteOhneVertrag: [Dokument]
     @Environment(Navigation.self) private var navigation
+    @Environment(\.modelContext) private var kontext
 
     private var liste: Pruefliste {
         Pruefliste.erstellen(vertraege: vertraege.map(\.daten), zahlungen: zahlungen.map(\.daten),
@@ -19,6 +20,12 @@ struct PrueflisteView: View {
         let p = liste
         let nachID = Dictionary(vertraege.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let offeneIDs = Set(p.zahlungenOhneVertrag.map(\.id))
+        let kernVertraege = vertraege.map(\.daten)
+        let kernZahlungen = zahlungen.map(\.daten)
+        let vorschlaege = Dictionary(uniqueKeysWithValues: p.zahlungenOhneVertrag.map {
+            ($0.id, ZahlungsZuordnung.vorschlaege(fuer: $0, vertraege: kernVertraege, zugeordnet: kernZahlungen))
+        })
+        let sichere = vorschlaege.values.filter { $0.first?.sicher == true }.count
         List {
             Section {
                 if p.zuPruefen.isEmpty { Text("Keine.").foregroundStyle(.secondary) }
@@ -44,10 +51,21 @@ struct PrueflisteView: View {
             Section {
                 if offeneIDs.isEmpty { Text("Keine.").foregroundStyle(.secondary) }
                 ForEach(zahlungen.filter { offeneIDs.contains($0.id) }) { z in
-                    ZahlungZuordnenZeile(zahlung: z, vertraege: vertraege)
+                    ZahlungZuordnenZeile(zahlung: z, vertraege: vertraege, vorschlaege: vorschlaege[z.id] ?? [])
                 }
             } header: {
-                Label("Zahlungen ohne Vertrag (\(offeneIDs.count))", systemImage: "questionmark.circle")
+                HStack {
+                    Label("Zahlungen ohne Vertrag (\(offeneIDs.count))", systemImage: "questionmark.circle")
+                    Spacer()
+                    if sichere > 0 {
+                        Button("\(sichere) eindeutige Vorschläge übernehmen") {
+                            _ = try? ImportDienst.sichereVorschlaegeUebernehmen(kontext: kontext)
+                        }
+                        .help("Nur Vorschläge mit mindestens 80 Punkten und klarem Abstand zum nächsten Vertrag")
+                    }
+                }
+            } footer: {
+                Text("Vorschläge beruhen auf Versicherer im Buchungstext, Betrag passend zum Beitrag und früheren Zahlungen. Nichts wird ohne Klick zugeordnet.")
             }
 
             if !dokumenteOhneVertrag.isEmpty {
@@ -83,21 +101,38 @@ struct VertragKurzzeile: View {
 struct ZahlungZuordnenZeile: View {
     @Bindable var zahlung: Zahlung
     var vertraege: [Vertrag]
+    var vorschlaege: [Zuordnungsvorschlag] = []
 
     var body: some View {
-        HStack {
-            Text(Datum.deutsch(zahlung.datum)).monospacedDigit().frame(width: 84, alignment: .leading)
-            Text(Zahl.euro(zahlung.betrag)).monospacedDigit().frame(width: 100, alignment: .trailing)
-            Text(zahlung.buchungstext).lineLimit(2).help(zahlung.buchungstext)
-            Spacer()
-            Picker("Vertrag", selection: $zahlung.vertrag) {
-                Text("– kein Vertrag –").tag(Vertrag?.none)
-                ForEach(vertraege) { v in
-                    Text("\(v.titel) (\(v.vertragsnummer))").tag(Vertrag?.some(v))
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(Datum.deutsch(zahlung.datum)).monospacedDigit().frame(width: 84, alignment: .leading)
+                Text(Zahl.euro(zahlung.betrag)).monospacedDigit().frame(width: 100, alignment: .trailing)
+                Text(zahlung.buchungstext).lineLimit(2).help(zahlung.buchungstext)
+                Spacer()
+                Picker("Vertrag", selection: $zahlung.vertrag) {
+                    Text("– kein Vertrag –").tag(Vertrag?.none)
+                    ForEach(vertraege) { v in
+                        Text("\(v.titel) (\(v.vertragsnummer))").tag(Vertrag?.some(v))
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 280)
+            }
+            ForEach(vorschlaege.prefix(2)) { vorschlag in
+                if let v = vertraege.first(where: { $0.id == vorschlag.vertragID }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: vorschlag.sicher ? "lightbulb.fill" : "lightbulb")
+                            .foregroundStyle(vorschlag.sicher ? Color.yellow : Color.secondary)
+                        Text("Vorschlag: \(v.titel) (\(vorschlag.punkte) Punkte)")
+                        Text(vorschlag.gruende.joined(separator: " · ")).foregroundStyle(.secondary).lineLimit(1)
+                        Spacer()
+                        Button("Übernehmen") { zahlung.vertrag = v }.controlSize(.small)
+                    }
+                    .font(.callout)
+                    .padding(.leading, 92)
                 }
             }
-            .labelsHidden()
-            .frame(maxWidth: 280)
         }
     }
 }
@@ -165,7 +200,7 @@ struct FristenView: View {
             }
         }
         .navigationTitle("Fristen & Aufgaben")
-        .task { await planen(nachID, still: true) }
+        .task { if !Demo.aktiv { await planen(nachID, still: true) } }
     }
 
     private func planen(_ nachID: [UUID: Vertrag], still: Bool = false) async {

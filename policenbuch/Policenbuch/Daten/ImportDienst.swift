@@ -148,3 +148,77 @@ enum ImportDienst {
         return anzahl
     }
 }
+
+// MARK: - Vorschläge, Sicherung, Wiederherstellung
+
+@MainActor
+extension ImportDienst {
+    /// Vorschläge für alle Zahlungen ohne Vertrag (Schlüssel: Zahlungs-ID).
+    static func vorschlaege(kontext: ModelContext) -> [UUID: [Zuordnungsvorschlag]] {
+        let alle = (try? kontext.fetch(FetchDescriptor<Zahlung>())) ?? []
+        let kern = alle.map(\.daten)
+        let vertraege = alleVertraege(kontext).map(\.daten)
+        var ergebnis: [UUID: [Zuordnungsvorschlag]] = [:]
+        for z in kern where z.vertragID == nil {
+            let v = ZahlungsZuordnung.vorschlaege(fuer: z, vertraege: vertraege, zugeordnet: kern)
+            if !v.isEmpty { ergebnis[z.id] = v }
+        }
+        return ergebnis
+    }
+
+    /// Übernimmt nur eindeutige Vorschläge mit hoher Punktzahl.
+    @discardableResult
+    static func sichereVorschlaegeUebernehmen(kontext: ModelContext) throws -> Int {
+        let vorschlaege = vorschlaege(kontext: kontext)
+        let zahlungen = Dictionary(((try? kontext.fetch(FetchDescriptor<Zahlung>())) ?? []).map { ($0.id, $0) },
+                                   uniquingKeysWith: { a, _ in a })
+        let vertraege = Dictionary(alleVertraege(kontext).map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        var anzahl = 0
+        for (zahlungID, liste) in vorschlaege {
+            guard let erster = liste.first, erster.sicher, let z = zahlungen[zahlungID], let v = vertraege[erster.vertragID] else { continue }
+            z.vertrag = v
+            anzahl += 1
+        }
+        try kontext.save()
+        return anzahl
+    }
+
+    static func sicherung(kontext: ModelContext) throws -> Sicherung {
+        let dokumente = try kontext.fetch(FetchDescriptor<Dokument>()).map {
+            Sicherung.Dokument(daten: $0.daten, erkannterText: $0.erkannterText, kandidaten: $0.kandidaten)
+        }
+        return Sicherung(erstellt: .now,
+                         vertraege: alleVertraege(kontext).map(\.daten),
+                         zahlungen: try kontext.fetch(FetchDescriptor<Zahlung>()).map(\.daten),
+                         dokumente: dokumente,
+                         aufgaben: try kontext.fetch(FetchDescriptor<Aufgabe>()).map(\.daten))
+    }
+
+    /// Ersetzt den gesamten Bestand durch die Sicherung.
+    static func wiederherstellen(_ s: Sicherung, kontext: ModelContext) throws {
+        // einzeln löschen: Stapellöschung scheitert bei Beziehungen mit „nullify“
+        for a in try kontext.fetch(FetchDescriptor<Aufgabe>()) { kontext.delete(a) }
+        for d in try kontext.fetch(FetchDescriptor<Dokument>()) { kontext.delete(d) }
+        for z in try kontext.fetch(FetchDescriptor<Zahlung>()) { kontext.delete(z) }
+        for v in try kontext.fetch(FetchDescriptor<Vertrag>()) { kontext.delete(v) }
+        try kontext.save()
+        var nachID: [UUID: Vertrag] = [:]
+        for d in s.vertraege {
+            let v = Vertrag(d)
+            kontext.insert(v)
+            nachID[d.id] = v
+        }
+        for z in s.zahlungen { kontext.insert(Zahlung(z, vertrag: z.vertragID.flatMap { nachID[$0] })) }
+        for d in s.dokumente {
+            let dok = Dokument(id: d.daten.id, pfad: d.daten.pfad, typ: d.daten.typ, datum: d.daten.datum,
+                               vertrag: d.daten.vertragID.flatMap { nachID[$0] }, erkannterText: d.erkannterText)
+            dok.kandidaten = d.kandidaten
+            kontext.insert(dok)
+        }
+        for a in s.aufgaben {
+            kontext.insert(Aufgabe(id: a.id, titel: a.titel, faelligkeit: a.faelligkeit,
+                                   vertrag: a.vertragID.flatMap { nachID[$0] }, erledigt: a.erledigt))
+        }
+        try kontext.save()
+    }
+}

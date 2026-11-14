@@ -47,6 +47,26 @@ jobs:
           codesign --verify --verbose=2 build/Build/Products/Release/Policenbuch.app
           ditto -c -k --keepParent build/Build/Products/Release/Policenbuch.app Policenbuch-app.zip
 
+      - name: Demo-Lauf mit Screenshots (nur erfundene Daten, Speicher im Arbeitsspeicher)
+        run: |
+          mkdir -p screenshots
+          app=build/Build/Products/Release/Policenbuch.app/Contents/MacOS/Policenbuch
+          "$app" -PolicenbuchDemo "$PWD/screenshots" & pid=$!
+          for i in $(seq 1 150); do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+          if kill -0 "$pid" 2>/dev/null; then echo "Demo hängt – wird beendet"; kill "$pid"; fi
+          ls -l screenshots
+          anzahl=$(ls screenshots/*.png 2>/dev/null | wc -l | tr -d ' ')
+          echo "Screenshots: $anzahl"
+          test "$anzahl" -ge 11
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Policenbuch-Screenshots
+          path: policenbuch/screenshots/*.png
+          if-no-files-found: ignore
+          retention-days: 14
+
       - uses: actions/upload-artifact@v4
         with:
           name: Policenbuch-App

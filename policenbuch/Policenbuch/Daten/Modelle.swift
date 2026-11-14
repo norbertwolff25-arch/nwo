@@ -131,8 +131,9 @@ final class Dokument {
     var kandidaten: String
     var eingelesen: Date
 
-    init(pfad: String, typ: DokumentTyp, datum: Date?, vertrag: Vertrag?, erkannterText: String = "", kandidaten: [String] = []) {
-        id = UUID()
+    init(id: UUID = UUID(), pfad: String, typ: DokumentTyp, datum: Date?, vertrag: Vertrag?, erkannterText: String = "",
+         kandidaten: [String] = []) {
+        self.id = id
         self.pfad = pfad
         typRoh = typ.rawValue
         self.datum = datum
@@ -164,8 +165,8 @@ final class Aufgabe {
     var erledigt: Bool
     var vertrag: Vertrag?
 
-    init(titel: String, faelligkeit: Date?, vertrag: Vertrag?, erledigt: Bool = false) {
-        id = UUID()
+    init(id: UUID = UUID(), titel: String, faelligkeit: Date?, vertrag: Vertrag?, erledigt: Bool = false) {
+        self.id = id
         self.titel = titel
         self.faelligkeit = faelligkeit
         self.vertrag = vertrag

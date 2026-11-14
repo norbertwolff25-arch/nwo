@@ -18,8 +18,8 @@ struct ImportView: View {
     var body: some View {
         Form {
             Section {
-                importzeile(titel: "Versicherungsbestand (CSV)",
-                            text: "versicherungsbestand_*.csv – Semikolon, UTF-8 mit BOM, Dezimalkomma. Unbekannte Spalten wandern in die Notizen.",
+                importzeile(titel: "Versicherungsbestand (CSV) oder eigener Export",
+                            text: "versicherungsbestand_*.csv – Semikolon, UTF-8 mit BOM, Dezimalkomma. Unbekannte Spalten wandern in die Notizen. Auch der eigene Berater-Export (vertraege.csv oder vertraege.json) lässt sich zurücklesen.",
                             symbol: "tablecells", knopf: "CSV wählen …") { starte(.bestand) }
                 importzeile(titel: "DSGVO-Export von Clark",
                             text: "JSON oder CSV. Die Felder ordnest du im nächsten Schritt zu; nicht zugeordnete Felder bleiben in den Notizen erhalten.",
@@ -79,7 +79,7 @@ struct ImportView: View {
     private var erlaubteTypen: [UTType] {
         switch auswahl {
         case .pdfOrdner: [.folder]
-        case .clark: [.json, .commaSeparatedText, .plainText, .data]
+        case .clark, .bestand: [.json, .commaSeparatedText, .plainText, .data]
         default: [.commaSeparatedText, .plainText, .data]
         }
     }
@@ -122,7 +122,9 @@ struct ImportView: View {
                 var alle: [VertragsDaten] = []
                 var warnungen: [(zeile: Int, text: String)] = []
                 for url in urls {
-                    let e = try BestandImport.lesen(try lesen(url), dateiname: url.lastPathComponent)
+                    let e = url.pathExtension.lowercased() == "json"
+                        ? try BeraterExport.vertraege(ausJSON: try lesen(url), quelle: url.lastPathComponent)
+                        : try BestandImport.lesen(try lesen(url), dateiname: url.lastPathComponent)
                     alle += e.vertraege
                     warnungen += e.warnungen.map { (zeile: $0.zeile, text: "\(url.lastPathComponent): \($0.text)") }
                 }

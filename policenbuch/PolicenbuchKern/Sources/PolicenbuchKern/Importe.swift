@@ -29,7 +29,9 @@ public enum BestandImport {
     }
 
     public static func lesen(_ tabelle: CSVTabelle, quelle: String, zuordnung: Feldzuordnung? = nil) -> VertragsImport {
-        let zuordnung = zuordnung ?? Feldzuordnung.automatisch(fuer: tabelle.kopf)
+        let zuordnung = zuordnung ?? (BeraterExport.istEigenerExport(kopf: tabelle.kopf)
+            ? BeraterExport.csvZuordnung
+            : Feldzuordnung.automatisch(fuer: tabelle.kopf))
         var vertraege: [VertragsDaten] = []
         var warnungen: [(Int, String)] = []
         for (i, zeile) in tabelle.zeilen.enumerated() {
