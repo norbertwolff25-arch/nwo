@@ -43,9 +43,11 @@ Native macOS-App für Norberts **private** Versicherungsverwaltung.
 - Zahlungen werden über die Vertragsnummer im Verwendungszweck zugeordnet (Trennzeichen egal, mind. 5 Zeichen).
 - Exportfelder an GDV-/BiPRO-Begriffe angelehnt (Versicherungsscheinnummer, Sparte, Beitrag, Zahlungsweise).
 
-## Stand (13.11.2026)
+## Stand (14.11.2026)
 
-- Fachkern `PolicenbuchKern`: 47 Tests grün (Linux und macOS 15).
-- App: baut mit Xcode 16.4 (Debug und Release), 6 App-Tests grün (GitHub-Workflow `Policenbuch (macOS)`).
-- Noch offen: die App mit erfundenen Daten aus `PolicenbuchKern/Tests/PolicenbuchKernTests/Testdaten` durchklicken
-  (Oberfläche, OCR, Mitteilungen sind nicht automatisiert getestet).
+- Fachkern `PolicenbuchKern`: 60 Tests grün (Linux und macOS 15).
+- App: baut mit Xcode 16.4 (Debug und Release); App-Tests grün, darunter Vision-OCR auf zur Laufzeit erzeugten
+  Scan-PDFs sowie Sicherung und Wiederherstellung in SwiftData.
+- Demo-Modus `-PolicenbuchDemo <Ordner>` erzeugt im Workflow 11 Screenshots (Artefakt `Policenbuch-Screenshots`).
+  Nach UI-Änderungen die Screenshots ansehen.
+- Noch nicht automatisiert: Mitteilungen (UserNotifications) und echte Scans in schlechter Qualität.
